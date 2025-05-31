@@ -30,6 +30,7 @@ set(HEADERS
     src/pack_planner.h
     src/pack_planner_app.h
     src/benchmark.h
+    src/parallel_pack_planner.h
 )
 
 # Source files
