@@ -1,98 +1,113 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.20)
 project(PackPlanner VERSION 1.0.0 LANGUAGES CXX)
 
-# Set C++ standard
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Compiler-specific options
-if(MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
-else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
-endif()
+find_program(CCACHE_FOUND ccache)
+if(CCACHE_FOUND)
+    message("Found ccache ${CCACHE_FOUND}")
+    message("Using ccache to speed up compilation")
+    set(ENV{CCACHE_CPP2} "yes")
+    set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE_FOUND})
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_FOUND})
+endif(CCACHE_FOUND)
 
 # Build types
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g -DDEBUG")
-set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+if(APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+    # Detect Apple M1/M2/M3 CPUs
+    execute_process(
+        COMMAND sysctl -n machdep.cpu.brand_string
+        OUTPUT_VARIABLE APPLE_CPU_BRAND
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    message(STATUS "Detected Apple CPU: ${APPLE_CPU_BRAND}")
 
-# Header files
-set(HEADERS
-    src/item.h
-    src/pack.h
-    src/timer.h
-    src/sorter.h
-    src/input_parser.h
-    src/pack_planner.h
-    src/pack_planner_app.h
-    src/benchmark.h
-    src/parallel_pack_planner.h
+    if(APPLE_CPU_BRAND MATCHES "M3")
+        set(MARCH_NATIVE "-mcpu=apple-m3")
+    elseif(APPLE_CPU_BRAND MATCHES "M2")
+        set(MARCH_NATIVE "-mcpu=apple-m2")
+    elseif(APPLE_CPU_BRAND MATCHES "M1")
+        set(MARCH_NATIVE "-mcpu=apple-m1")
+    else()
+        message(WARNING "Unknown Apple Silicon CPU, using default flags")
+    endif()
+
+elseif(UNIX AND NOT APPLE)
+    find_program(LSCPU lscpu)
+    if(LSCPU)
+        execute_process(
+            COMMAND ${LSCPU}
+            OUTPUT_VARIABLE LSCPU_OUTPUT
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        string(REGEX MATCH "Model name:[^\n]+" CPU_LINE "${LSCPU_OUTPUT}")
+        string(REGEX REPLACE ".*Model name:[ \t]*" "" CPU_MODEL "${CPU_LINE}")
+
+        message(STATUS "Detected CPU model: ${CPU_MODEL}")
+
+        if(CPU_MODEL MATCHES "Zen 2")
+            set(MARCH_NATIVE "-march=znver2")
+        elseif(CPU_MODEL MATCHES "Zen 3")
+            set(MARCH_NATIVE "-march=znver3")
+        elseif(CPU_MODEL MATCHES "Zen 4")
+            set(MARCH_NATIVE "-march=znver4")
+        elseif(CPU_MODEL MATCHES "Alder Lake")
+            set(MARCH_NATIVE "-march=alderlake")
+        elseif(CPU_MODEL MATCHES "Ryzen AI 9 HX 370")
+            set(MARCH_NATIVE "-march=znver5")
+        endif()
+    endif()
+endif()
+
+if(MARCH_NATIVE STREQUAL "")
+    set(MARCH_NATIVE "-march=native")
+endif()
+
+message(STATUS "Using architecture-specific flags: ${MARCH_NATIVE}")
+
+string(
+    APPEND opts
+        "$<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:-Wall;-Wno-deprecated-declarations;-O3;${MARCH_NATIVE};-std=c++20;-fPIC;-DBOOST_BIND_GLOBAL_PLACEHOLDERS;-flto;-fomit-frame-pointer>"
+        "$<$<AND:$<CONFIG:DEBUG>,$<COMPILE_LANGUAGE:CXX>>:-Wall;-Wno-deprecated-declarations;-O0;-g3;-std=c++20;-D_GLIBCXX_DEBUG;-fPIC;-DBOOST_BIND_GLOBAL_PLACEHOLDERS>"
+        "$<$<AND:$<CONFIG:RELWITHDEBINFO>,$<COMPILE_LANGUAGE:CXX>>:-Wall;-Wno-deprecated-declarations;${MARCH_NATIVE};-O3;-g;-std=c++20;-fPIC;-DBOOST_BIND_GLOBAL_PLACEHOLDERS;-flto;-fomit-frame-pointer>"
+        "$<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:C>>:-Wall;-Wno-deprecated-declarations;${MARCH_NATIVE};-O3;-fPIC;-DBOOST_BIND_GLOBAL_PLACEHOLDERS;-flto;-fomit-frame-pointer>"
+        "$<$<AND:$<CONFIG:DEBUG>,$<COMPILE_LANGUAGE:C>>:-Wall;-Wno-deprecated-declarations;-O0;-g3;-D_GLIBCXX_DEBUG;-fPIC;-DBOOST_BIND_GLOBAL_PLACEHOLDERS>"
+        "$<$<AND:$<CONFIG:RELWITHDEBINFO>,$<COMPILE_LANGUAGE:C>>:-Wall;-Wno-deprecated-declarations;${MARCH_NATIVE};-O3;-g;-fPIC;-DBOOST_BIND_GLOBAL_PLACEHOLDERS;-flto;-fomit-frame-pointer>"
 )
+add_compile_options("${opts}")
 
 # Source files
 set(SOURCES
-    main.cpp
+    src/main.cpp
+    src/Item.cpp
+    src/Pack.cpp
+    src/PackPlanner.cpp
+    src/Timer.cpp
+    src/Benchmark.cpp
 )
 
-# Create the executable
+# Header files
+set(HEADERS
+    include/Item.h
+    include/Pack.h
+    include/PackPlanner.h
+    include/Timer.h
+    include/Benchmark.h
+    include/SortOrder.h
+)
+
+# Create executable
 add_executable(pack_planner ${SOURCES} ${HEADERS})
 
-# Set target properties
-set_target_properties(pack_planner PROPERTIES
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED ON
-)
+# Include directories
+target_include_directories(pack_planner PRIVATE include)
 
-# Include current directory for headers
-target_include_directories(pack_planner PRIVATE
-                            ${CMAKE_CURRENT_SOURCE_DIR}
-                            ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
-
-# Custom targets for testing and benchmarking
-add_custom_target(test_run
-    COMMAND ${CMAKE_COMMAND} -E echo "Running basic functionality test..."
-    COMMAND ${CMAKE_COMMAND} -E echo "NATURAL,50,500.0" > test_input.txt
-    COMMAND ${CMAKE_COMMAND} -E echo "1001,1000,10,5.0" >> test_input.txt
-    COMMAND ${CMAKE_COMMAND} -E echo "1002,2000,5,3.0" >> test_input.txt
-    COMMAND ${CMAKE_COMMAND} -E echo "" >> test_input.txt
-    COMMAND pack_planner test_input.txt
-    COMMAND ${CMAKE_COMMAND} -E remove test_input.txt
-    DEPENDS pack_planner
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Running pack planner test"
-)
-
-add_custom_target(benchmark_run
-    COMMAND pack_planner --benchmark
-    DEPENDS pack_planner
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMENT "Running performance benchmark"
-)
-
-# Installation
-install(TARGETS pack_planner
-    RUNTIME DESTINATION bin
-)
-
-# Optional: Package configuration
-set(CPACK_PACKAGE_NAME "PackPlanner")
-set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "High-performance pack planning application")
-set(CPACK_PACKAGE_VENDOR "PackPlanner Team")
-
-include(CPack)
-
-# Print build information
-message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER}")
-message(STATUS "C++ flags: ${CMAKE_CXX_FLAGS}")
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    message(STATUS "Debug flags: ${CMAKE_CXX_FLAGS_DEBUG}")
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-    message(STATUS "Release flags: ${CMAKE_CXX_FLAGS_RELEASE}")
-endif()
+# Enable threading for benchmarks
+find_package(Threads REQUIRED)
+target_link_libraries(pack_planner Threads::Threads)
