@@ -45,7 +45,8 @@ public:
      * @param items Items to pack
      * @return pack_planner_result Results of the planning process
      */
-    [[nodiscard]] pack_planner_result plan_packs(const pack_planner_config& config, std::vector<item> items) {
+    [[nodiscard]] pack_planner_result plan_packs(const pack_planner_config& config,
+                                                 std::vector<item> items) {
         pack_planner_result result;
 
         // Start total timing
@@ -72,7 +73,8 @@ public:
         }
 
         // Calculate utilization
-        result.utilization_percent = calculate_utilization(result.packs, config.max_weight_per_pack);
+        result.utilization_percent = calculate_utilization(result.packs,
+                                                           config.max_weight_per_pack);
 
         return result;
     }
@@ -96,7 +98,8 @@ public:
      * @param max_weight Maximum weight per pack
      * @return double Utilization percentage
      */
-    [[nodiscard]] double calculate_utilization(const std::vector<pack>& packs, double max_weight) const noexcept {
+    [[nodiscard]] double calculate_utilization(const std::vector<pack>& packs,
+                                               double max_weight) const noexcept {
         if (packs.empty()) return 0.0;
 
         double total_weight = 0.0;
@@ -143,8 +146,12 @@ private:
      * @param max_weight Maximum weight per pack
      * @return std::vector<Pack> Vector of packs
      */
-    [[nodiscard]] std::vector<pack> pack_items(const std::vector<item>& items, int max_items, double max_weight) {
+    [[nodiscard]] std::vector<pack> pack_items(
+        const std::vector<item>& items, int max_items, double max_weight)
+    {
         std::vector<pack> packs;
+        // Pre-allocate based on empirical ratio to avoid reallocations
+        packs.reserve(std::max<size_t>(64, static_cast<size_t>(items.size() * 0.00222) + 16));
         int pack_number = 1;
         packs.emplace_back(pack_number);
 
@@ -152,25 +159,15 @@ private:
             int remaining_quantity = i.get_quantity();
 
             while (remaining_quantity > 0) {
-                // Try to add as much as possible to current pack
                 pack& current_pack = packs.back();
-                item temp_item(i.get_id(), i.get_length(), remaining_quantity, i.get_weight());
-                int added_quantity = current_pack.add_partial_item(temp_item, max_items, max_weight);
+                int added_quantity =
+                    current_pack.add_partial_item(i.get_id(), i.get_length(), remaining_quantity,
+                                                    i.get_weight(), max_items, max_weight);
 
                 if (added_quantity > 0) {
                     remaining_quantity -= added_quantity;
                 } else {
-                    // Current pack is full, start a new one
                     packs.emplace_back(++pack_number);
-                    pack& current_pack = packs.back();
-                    // Try again with new pack
-                    added_quantity = current_pack.add_partial_item(temp_item, max_items, max_weight);
-                    if (added_quantity > 0) {
-                        remaining_quantity -= added_quantity;
-                    } else {
-                        // This shouldn't happen with valid constraints
-                        break;
-                    }
                 }
             }
         }

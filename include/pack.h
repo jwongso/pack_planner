@@ -55,14 +55,14 @@ public:
             return 0;
         }
 
-        int max_by_items = max_items - m_total_items;
+        const int max_by_items = max_items - m_total_items;
 
         // Only calculate weight constraint if we haven't already hit the item limit
         int can_add = std::min(max_by_items, remaining_quantity);
         if (can_add > 0) {
             // Calculate how many we can fit by weight
-            double remaining_weight = max_weight - m_total_weight;
-            int max_by_weight = static_cast<int>(remaining_weight / item.get_weight());
+            const double remaining_weight = max_weight - m_total_weight;
+            const int max_by_weight = static_cast<int>(remaining_weight / item.get_weight());
             can_add = std::min(can_add, max_by_weight);
         }
 
@@ -99,9 +99,10 @@ public:
      */
     [[nodiscard]] int add_partial_item(int id, int length, int quantity, double weight,
                        int max_items, double max_weight) noexcept {
-        int max_by_items = max_items - m_total_items;
-        int max_by_weight = static_cast<int>((max_weight - m_total_weight) / weight);
-        int can_add = std::min({max_by_items, max_by_weight, quantity});
+        const int max_by_items = max_items - m_total_items;
+        const double weight_remaining = max_weight - m_total_weight;
+        const int max_by_weight = static_cast<int>(weight_remaining / weight);
+        const int can_add = std::min({max_by_items, max_by_weight, quantity});
 
         if (can_add > 0) {
             m_items.emplace_back(id, length, can_add, weight);
