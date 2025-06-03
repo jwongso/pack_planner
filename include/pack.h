@@ -119,6 +119,7 @@ public:
      * @return bool True if the pack is full
      */
     [[nodiscard]] bool is_full(int max_items, double max_weight) const noexcept {
+        // Floating-point precision fix by epsilon.
         return m_total_items >= max_items || m_total_weight >= max_weight - 1e-9;
     }
 

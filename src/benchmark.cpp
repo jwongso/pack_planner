@@ -13,25 +13,25 @@ void benchmark::run_benchmark() {
     std::cout << "=== PERFORMANCE BENCHMARK ===" << std::endl;
     std::cout << "Running C++ Performance Benchmarks..." << std::endl;
     
-    std::vector<benchmark_result> allResults;
+    std::vector<benchmark_result> all_results;
     
     m_total_timer.start();
     
     for (sort_order order : SORT_ORDERS) {
-        std::cout << "Size    Sorting(ms) Packing(ms) Total(ms)   Items/sec   Packs   Util%" << std::endl;
-        std::cout << "----------------------------------------------------------------------" << std::endl;
+        std::cout << "Size      Sorting(ms) Packing(ms) Total(ms)   Items/sec   Packs       Util%" << std::endl;
+        std::cout << "----------------------------------------------------------------------------" << std::endl;
         
         for (int size : BENCHMARK_SIZES) {
             benchmark_result result = run_single_benchmark(size, order);
-            allResults.push_back(result);
+            all_results.push_back(result);
             
-            std::cout << std::left << std::setw(8) << size
-                      << std::left << std::setw(12) << result.order
+            std::cout << std::left << std::setw(12) << size
+                      << std::left << std::setw(10) << result.order
                       << std::fixed << std::setprecision(3)
                       << std::left << std::setw(12) << result.packing_time
                       << std::left << std::setw(12) << result.total_time
                       << std::left << std::setw(12) << result.items_per_second
-                      << std::left << std::setw(8) << result.total_packs
+                      << std::left << std::setw(12) << result.total_packs
                       << std::setprecision(1) << result.utilization_percent << "%" << std::endl;
         }
         std::cout << std::endl;
@@ -48,16 +48,24 @@ std::vector<item> benchmark::generate_test_data(int size) {
     items.reserve(size);
     
     std::random_device rd;
-    std::mt19937 gen(42); // Fixed seed for reproducible results
-    std::uniform_int_distribution<> lengthDist(1000, 10000);
-    std::uniform_int_distribution<> quantityDist(1, 100);
-    std::uniform_real_distribution<> weightDist(1.0, 20.0);
+    std::mt19937 gen(48); // Fixed seed for reproducible results
+    std::uniform_int_distribution<> length_dist(500, 10000);
+    std::uniform_int_distribution<> quantity_dist(10, 100);
+    std::uniform_real_distribution<> lightweight_dist(0.5, 6.0);
+    std::uniform_real_distribution<> heavyweight_dist(6.1, 30.0);
     
     for (int i = 0; i < size; ++i) {
         int id = 1000 + i;
-        int length = lengthDist(gen);
-        int quantity = quantityDist(gen);
-        double weight = weightDist(gen);
+        int length = length_dist(gen);
+        int quantity = quantity_dist(gen);
+        double weight = 0.0;
+        // 70% lightweight items (sorting matters)
+        // 30% heavyweight items (always split)
+        if (i % 10 < 7) {
+            weight = lightweight_dist(gen);  // 0.5-3.0kg
+        } else {
+            weight = heavyweight_dist(gen);  // 15-25kg
+        }
         
         items.emplace_back(id, length, quantity, weight);
     }

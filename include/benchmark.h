@@ -37,8 +37,8 @@ private:
     timer m_total_timer;
     
     // Default benchmark configuration
-    static constexpr int MAX_ITEMS_PER_PACK = 40;
-    static constexpr double MAX_WEIGHT_PER_PACK = 500.0;
+    static constexpr int MAX_ITEMS_PER_PACK = 100;
+    static constexpr double MAX_WEIGHT_PER_PACK = 200.0;
     
     // benchmark sizes
     static const std::vector<int> BENCHMARK_SIZES;
