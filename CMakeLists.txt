@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(PackPlanner VERSION 1.0.0 LANGUAGES CXX)
+project(pack_planner VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -85,8 +85,7 @@ separate_arguments(opts_list UNIX_COMMAND "${opts}")
 
 # Source files
 set(SOURCES
-    src/main.cpp
-    src/benchmark.cpp
+    src/pack_strategy_factory.cpp
 )
 
 # Header files
@@ -97,22 +96,34 @@ set(HEADERS
     include/timer.h
     include/benchmark.h
     include/sort_order.h
+    include/pack_strategy.h
+    include/blocking_pack_strategy.h
+    include/async_pack_strategy.h
+    include/parallel_pack_strategy.h
 )
 
+set(MAIN_SRC
+    src/main.cpp
+    src/benchmark.cpp
+)
+
+add_library(${PROJECT_NAME}_LIB ${SOURCES} ${HEADERS})
+
 # Create executable
-add_executable(pack_planner ${SOURCES} ${HEADERS})
-target_compile_options(pack_planner PRIVATE ${opts_list})
-set_target_properties(pack_planner PROPERTIES
+add_executable(${PROJECT_NAME} ${MAIN_SRC})
+target_compile_options(${PROJECT_NAME} PRIVATE ${opts_list})
+set_target_properties(${PROJECT_NAME} PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
 )
 
 # Include directories
-target_include_directories(pack_planner PRIVATE include)
+target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(${PROJECT_NAME}_LIB PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
 # Enable threading for benchmarks
 find_package(Threads REQUIRED)
-target_link_libraries(pack_planner Threads::Threads)
+target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_LIB Threads::Threads)
 
 # Enable testing
 enable_testing()

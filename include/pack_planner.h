@@ -3,18 +3,22 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <memory>
 #include "item.h"
 #include "pack.h"
 #include "sort_order.h"
+#include "pack_strategy.h"
 #include "timer.h"
 
 /**
  * @brief Configuration for the pack planning process
  */
 struct pack_planner_config {
-    sort_order order;
-    int max_items_per_pack;
-    double max_weight_per_pack;
+    sort_order order = sort_order::NATURAL;
+    int max_items_per_pack = 100;
+    double max_weight_per_pack = 200.0;
+    pack_strategy_factory::strategy_type strategy_type = pack_strategy_factory::strategy_type::BLOCKING;
+    int thread_count = 4; // Used for parallel strategy
 };
 
 /**
@@ -27,6 +31,7 @@ struct pack_planner_result {
     double total_time;
     int total_items;
     double utilization_percent;
+    std::string strategy_name;
 };
 
 /**
@@ -58,10 +63,15 @@ public:
         sort_items(items, config.order);
         result.sorting_time = sort_timer.stop();
 
-        // Pack items
+        // Create strategy
+        auto strategy = pack_strategy_factory::create_strategy(
+            config.strategy_type, config.thread_count);
+        result.strategy_name = strategy->get_name();
+
+        // Pack items using selected strategy
         timer pack_timer;
         pack_timer.start();
-        result.packs = pack_items(items, config.max_items_per_pack, config.max_weight_per_pack);
+        result.packs = strategy->pack_items(items, config.max_items_per_pack, config.max_weight_per_pack);
         result.packing_time = pack_timer.stop();
 
         result.total_time = m_timer.stop();
@@ -137,42 +147,6 @@ private:
                 // Keep original order
                 break;
         }
-    }
-
-    /**
-     * @brief Pack items into packs
-     * @param items Items to pack
-     * @param max_items Maximum items per pack
-     * @param max_weight Maximum weight per pack
-     * @return std::vector<Pack> Vector of packs
-     */
-    [[nodiscard]] std::vector<pack> pack_items(
-        const std::vector<item>& items, int max_items, double max_weight)
-    {
-        std::vector<pack> packs;
-        // Pre-allocate based on empirical ratio to avoid reallocations
-        packs.reserve(std::max<size_t>(64, static_cast<size_t>(items.size() * 0.00222) + 16));
-        int pack_number = 1;
-        packs.emplace_back(pack_number);
-
-        for (const auto& i : items) {
-            int remaining_quantity = i.get_quantity();
-
-            while (remaining_quantity > 0) {
-                pack& current_pack = packs.back();
-                int added_quantity =
-                    current_pack.add_partial_item(i.get_id(), i.get_length(), remaining_quantity,
-                                                    i.get_weight(), max_items, max_weight);
-
-                if (added_quantity > 0) {
-                    remaining_quantity -= added_quantity;
-                } else {
-                    packs.emplace_back(++pack_number);
-                }
-            }
-        }
-
-        return packs;
     }
 
     timer m_timer;

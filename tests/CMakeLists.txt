@@ -13,6 +13,7 @@ add_executable(pack_planner_tests
 
 # Link against GTest and the main project
 target_link_libraries(pack_planner_tests
+    pack_planner_LIB
     ${GTEST_LIBRARIES}
     ${GTEST_MAIN_LIBRARIES}
     Threads::Threads
