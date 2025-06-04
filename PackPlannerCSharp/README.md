@@ -153,7 +153,7 @@ PackPlannerCSharp/
 │   ├── BlockingPackStrategy.cs # Sequential packing implementation
 │   ├── ParallelPackStrategy.cs # Parallel packing implementation
 │   ├── Benchmark.cs            # Performance testing framework
-│   └── README.md               # This file
+README.md                       # This file
 ```
 
 ## Differences from C++ Version
