@@ -5,6 +5,11 @@
 #include "item.h"
 #include "pack.h"
 
+enum class strategy_type {
+    BLOCKING,
+    PARALLEL
+};
+
 /**
  * @brief Strategy interface for different packing algorithms
  */
@@ -35,12 +40,6 @@ public:
  */
 class pack_strategy_factory {
 public:
-    enum class strategy_type {
-        BLOCKING,
-        PARALLEL,
-        ASYNC
-    };
-
     /**
      * @brief Create a pack strategy
      * @param type Strategy type to create

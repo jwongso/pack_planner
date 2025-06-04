@@ -8,6 +8,13 @@
  */
 class blocking_pack_strategy : public pack_strategy {
 public:
+    /**
+     * @brief Pack items into packs sequentially
+     * @param items Items to pack
+     * @param max_items Maximum items per pack
+     * @param max_weight Maximum weight per pack
+     * @return std::vector<pack> Vector of packs
+     */
     std::vector<pack> pack_items(const std::vector<item>& items,
                                int max_items,
                                double max_weight) override {

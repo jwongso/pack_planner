@@ -94,11 +94,9 @@ set(HEADERS
     include/pack.h
     include/pack_planner.h
     include/timer.h
-    include/benchmark.h
     include/sort_order.h
     include/pack_strategy.h
     include/blocking_pack_strategy.h
-    include/async_pack_strategy.h
     include/parallel_pack_strategy.h
 )
 
@@ -107,11 +105,17 @@ set(MAIN_SRC
     src/benchmark.cpp
 )
 
+set(MAIN_INCLUDE
+    include/benchmark.h
+)
+
 add_library(${PROJECT_NAME}_LIB ${SOURCES} ${HEADERS})
 
 # Create executable
-add_executable(${PROJECT_NAME} ${MAIN_SRC})
+add_executable(${PROJECT_NAME} ${MAIN_SRC} ${MAIN_INCLUDE})
+
 target_compile_options(${PROJECT_NAME} PRIVATE ${opts_list})
+target_compile_options(${PROJECT_NAME}_LIB PRIVATE ${opts_list})
 set_target_properties(${PROJECT_NAME} PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE

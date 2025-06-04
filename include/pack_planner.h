@@ -17,7 +17,7 @@ struct pack_planner_config {
     sort_order order = sort_order::NATURAL;
     int max_items_per_pack = 100;
     double max_weight_per_pack = 200.0;
-    pack_strategy_factory::strategy_type strategy_type = pack_strategy_factory::strategy_type::BLOCKING;
+    strategy_type type = strategy_type::BLOCKING;
     int thread_count = 4; // Used for parallel strategy
 };
 
@@ -65,7 +65,7 @@ public:
 
         // Create strategy
         auto strategy = pack_strategy_factory::create_strategy(
-            config.strategy_type, config.thread_count);
+            config.type, config.thread_count);
         result.strategy_name = strategy->get_name();
 
         // Pack items using selected strategy
