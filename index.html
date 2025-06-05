@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASM Pack Planner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        // Download functions (make them globally accessible)
+        window.downloadInputData = function() {
+            if (!fullInputData || fullInputData.length === 0) {
+                alert('No full input data available to download');
+                return;
+            }
+
+            const jsonData = JSON.stringify(fullInputData, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pack_planner_input_${fullInputData.length}_items.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        window.downloadResults = function() {
+            if (!fullResultsData || fullResultsData.length === 0) {
+                alert('No full results data available to download');
+                return;
+            }
+
+            const textData = fullResultsData.join('\n\n' + '='.repeat(50) + '\n\n');
+            const blob = new Blob([textData], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pack_planner_results_${fullResultsData.length}_packs.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .input-section, .output-section {
+            flex: 1;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .input-group small {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+            display: block;
+        }
+
+        textarea {
+            width: 100%;
+            height: 180px;
+            font-family: 'Courier New', monospace;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            margin: 10px 0;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .pack {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background: #f9f9f9;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+
+        .error {
+            color: #e74c3c;
+            background: #fadbd8;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 WASM Pack Planner</h1>
+
+    <div class="container">
+        <div class="input-section">
+            <h2>Configuration</h2>
+
+            <div class="input-group">
+                <label for="maxItems">Max Items per Pack:</label>
+                <input type="number" id="maxItems" value="10" min="1">
+            </div>
+
+            <div class="input-group">
+                <label for="maxWeight">Max Weight per Pack (kg):</label>
+                <input type="number" id="maxWeight" value="25.0" step="0.1" min="0.1">
+            </div>
+
+            <div class="input-group">
+                <label for="itemCount">Number of Items to Generate:</label>
+                <input type="number" id="itemCount" value="20" min="1" max="20000000">
+                <small>Range: 1 to 20,000,000 items</small>
+            </div>
+
+            <h3>Items (Format: [id, length, quantity, weight])</h3>
+            <textarea id="itemsInput" placeholder="Enter items as JSON array...">[
+    [1, 100, 5, 2.5],
+    [2, 200, 3, 4.0],
+    [3, 150, 8, 1.5],
+    [4, 300, 2, 3.2],
+    [5, 120, 10, 1.8],
+    [6, 250, 4, 2.9],
+    [7, 180, 6, 2.1],
+    [8, 350, 1, 5.5]
+]</textarea>
+
+            <button id="runButton" disabled>🔄 Run Packing</button>
+            <button id="generateButton">🎲 Generate Test Data</button>
+            <button id="downloadInputButton" disabled>📥 Download Full Input Data</button>
+
+            <div id="status" class="status">Loading WASM module...</div>
+        </div>
+
+        <div class="output-section">
+            <h2>Packing Results</h2>
+            <div id="results"></div>
+            <div id="error"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global reference to WASM module
+        let Module = null;
+
+        // Store full datasets for download
+        let fullInputData = null;
+        let fullResultsData = null;
+
+        // Load WASM module when page loads
+        async function loadWasm() {
+            const statusEl = document.getElementById('status');
+            const errorEl = document.getElementById('error');
+            const runButton = document.getElementById('runButton');
+
+            try {
+                statusEl.textContent = 'Loading WASM module...';
+                statusEl.className = 'status loading';
+
+                // Load the WASM module - adjust path as needed
+                if (typeof createModule !== 'undefined') {
+                    Module = await createModule();
+                } else {
+                    // Fallback - try importing if it's an ES module
+                    const wasmModule = await import('./pack_planner_wasm.js');
+                    Module = await wasmModule.default();
+                }
+
+                statusEl.textContent = '✅ WASM module loaded successfully!';
+                statusEl.className = 'status success';
+                runButton.disabled = false;
+                errorEl.textContent = '';
+
+            } catch (e) {
+                statusEl.textContent = '❌ Failed to load WASM module';
+                statusEl.className = 'status error';
+                errorEl.innerHTML = `<strong>WASM Loading Error:</strong> ${e.message}<br><br>
+                    <strong>Troubleshooting:</strong><br>
+                    • Make sure pack_planner_wasm.js and pack_planner_wasm.wasm are in the same directory<br>
+                    • Serve files from a web server (not file:// protocol)<br>
+                    • Check browser console for additional errors`;
+                errorEl.className = 'error';
+                console.error("WASM loading error:", e);
+            }
+        }
+
+        // Generate test data
+        function generateTestData() {
+            const itemCount = parseInt(document.getElementById('itemCount').value);
+
+            // Validate item count
+            if (itemCount < 1 || itemCount > 20000000) {
+                document.getElementById('error').innerHTML =
+                    '<div class="error">❌ Item count must be between 1 and 20,000,000</div>';
+                return;
+            }
+
+            const sizes = [50, 100, 150, 200, 250, 300, 350, 400];
+            const items = [];
+
+            // Show progress for large datasets
+            const statusEl = document.getElementById('status');
+            const generateButton = document.getElementById('generateButton');
+
+            if (itemCount > 1000) {
+                statusEl.textContent = `🎲 Generating ${itemCount.toLocaleString()} items...`;
+                statusEl.className = 'status loading';
+                generateButton.disabled = true;
+            }
+
+            // Use setTimeout to allow UI updates for large datasets
+            const batchSize = 10000;
+            let processed = 0;
+
+            function generateBatch() {
+                const endIndex = Math.min(processed + batchSize, itemCount);
+
+                for (let i = processed; i < endIndex; i++) {
+                    const id = i + 1;
+                    const length = sizes[Math.floor(Math.random() * sizes.length)];
+                    const quantity = Math.floor(Math.random() * 10) + 1; // 1-10
+                    const weight = (Math.random() * 4.5 + 0.5).toFixed(1); // 0.5-5.0kg
+
+                    items.push([id, length, quantity, parseFloat(weight)]);
+                }
+
+                processed = endIndex;
+
+                if (processed < itemCount) {
+                    // Update progress
+                    if (itemCount > 1000) {
+                        statusEl.textContent = `🎲 Generating items... ${processed.toLocaleString()}/${itemCount.toLocaleString()}`;
+                    }
+                    // Continue with next batch
+                    setTimeout(generateBatch, 0);
+                } else {
+                    // Finished generating
+                    fullInputData = [...items]; // Store full data
+
+                    // Show only first 100 items in textarea
+                    const displayItems = items.slice(0, 100);
+                    const displayData = JSON.stringify(displayItems, null, 2);
+
+                    if (items.length > 100) {
+                        document.getElementById('itemsInput').value = displayData +
+                            `\n\n// Showing first 100 of ${items.length.toLocaleString()} items\n// Use "Download Full Input Data" to get complete dataset`;
+                    } else {
+                        document.getElementById('itemsInput').value = displayData;
+                    }
+
+                    // Enable download button if we have more than 100 items
+                    document.getElementById('downloadInputButton').disabled = items.length <= 100;
+
+                    if (itemCount > 1000) {
+                        statusEl.textContent = `✅ Generated ${itemCount.toLocaleString()} items successfully!`;
+                        statusEl.className = 'status success';
+                        generateButton.disabled = false;
+                    }
+
+                    // Clear any previous errors
+                    document.getElementById('error').innerHTML = '';
+                }
+            }
+
+            // Start generation
+            generateBatch();
+        }
+
+        // Main packing function
+        async function runPacking() {
+            if (!Module) {
+                document.getElementById('error').innerHTML =
+                    '<div class="error">❌ WASM module not loaded</div>';
+                return;
+            }
+
+            const statusEl = document.getElementById('status');
+            const errorEl = document.getElementById('error');
+            const resultsEl = document.getElementById('results');
+            const runButton = document.getElementById('runButton');
+
+            // Clear previous results
+            statusEl.textContent = '⚙️ Processing...';
+            statusEl.className = 'status loading';
+            errorEl.innerHTML = '';
+            resultsEl.innerHTML = '';
+            runButton.disabled = true;
+
+            try {
+                // Get input values
+                const maxItems = parseInt(document.getElementById('maxItems').value);
+                const maxWeight = parseFloat(document.getElementById('maxWeight').value);
+                const itemsText = document.getElementById('itemsInput').value.trim();
+
+                // Validate inputs
+                if (maxItems <= 0) throw new Error('Max items must be positive');
+                if (maxWeight <= 0) throw new Error('Max weight must be positive');
+                if (!itemsText) throw new Error('Items input is empty');
+
+                // Parse items - use full data if available, otherwise parse from textarea
+                let items;
+                if (fullInputData && fullInputData.length > 0) {
+                    items = fullInputData;
+                } else {
+                    items = JSON.parse(itemsText);
+                }
+                if (!Array.isArray(items) || items.length === 0) {
+                    throw new Error('Items must be a non-empty array');
+                }
+
+                // Validate item format
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    if (!Array.isArray(item) || item.length !== 4) {
+                        throw new Error(`Item ${i + 1} must have exactly 4 values: [id, length, quantity, weight]`);
+                    }
+                    if (item.some(val => typeof val !== 'number' || val <= 0)) {
+                        throw new Error(`Item ${i + 1} has invalid values (all must be positive numbers)`);
+                    }
+                }
+
+                // Create planner instance
+                const planner = new Module.PackPlanner();
+
+                const startTime = performance.now();
+
+                // Call WASM function - pass items directly as JS array
+                const packedResults = planner.packItems(items, maxItems, maxWeight);
+
+                const endTime = performance.now();
+                const processingTime = (endTime - startTime).toFixed(2);
+
+                // Display results
+                if (packedResults && packedResults.size() > 0) {
+                    // Store full results for download
+                    fullResultsData = [];
+                    for (let i = 0; i < packedResults.size(); i++) {
+                        fullResultsData.push(`Pack ${i + 1}:\n${packedResults.get(i)}`);
+                    }
+
+                    const totalPacks = packedResults.size();
+                    const packsToShow = Math.min(100, totalPacks);
+
+                    let summaryHtml = `
+                        <div style="background: #e8f5e8; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                            <strong>📊 Summary:</strong><br>
+                            • Total Packs: <strong>${totalPacks.toLocaleString()}</strong><br>
+                            • Processing Time: <strong>${processingTime}ms</strong><br>
+                            • Input Items: <strong>${items.length.toLocaleString()}</strong><br>
+                            • Showing: <strong>First ${packsToShow} pack${packsToShow !== 1 ? 's' : ''}</strong>
+                        </div>
+                    `;
+
+                    if (totalPacks > 100) {
+                        summaryHtml += `
+                            <div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+                                📄 <strong>Note:</strong> Showing first 100 of ${totalPacks.toLocaleString()} packs.
+                                <button id="downloadResultsButton" style="margin-left: 10px; padding: 5px 10px; font-size: 14px;">📥 Download Full Results</button>
+                            </div>
+                        `;
+                    }
+
+                    summaryHtml += `<h3>📦 Pack Details:</h3>`;
+                    resultsEl.innerHTML = summaryHtml;
+
+                    // Show only first 100 packs
+                    for (let i = 0; i < packsToShow; i++) {
+                        const packDiv = document.createElement('div');
+                        packDiv.className = 'pack';
+                        const packData = packedResults.get(i);
+                        packDiv.innerHTML = `<strong>Pack ${i + 1}:</strong><br>${packData}`;
+                        resultsEl.appendChild(packDiv);
+                    }
+
+                    // Add event listener for download results button if it exists
+                    const downloadResultsBtn = document.getElementById('downloadResultsButton');
+                    if (downloadResultsBtn) {
+                        downloadResultsBtn.addEventListener('click', window.downloadResults);
+                    }
+
+                    statusEl.textContent = `✅ Success! Created ${totalPacks.toLocaleString()} packs in ${processingTime}ms`;
+                    statusEl.className = 'status success';
+                } else {
+                    resultsEl.innerHTML = `
+                        <div style="background: #fff3cd; padding: 15px; border-radius: 4px;">
+                            ⚠️ No packs were created. This might happen if:<br>
+                            • Items are too large for the constraints<br>
+                            • All items exceed the weight limit<br>
+                            • Check your max items/weight settings
+                        </div>
+                    `;
+                    statusEl.textContent = '⚠️ Completed (no packs created)';
+                    statusEl.className = 'status error';
+                }
+
+                // Clean up WASM objects
+                planner.delete();
+
+            } catch (e) {
+                errorEl.innerHTML = `<div class="error">❌ <strong>Error:</strong> ${e.message}</div>`;
+                statusEl.textContent = '❌ Processing failed';
+                statusEl.className = 'status error';
+                console.error("Packing error:", e);
+            } finally {
+                runButton.disabled = false;
+            }
+        }
+
+        // Allow Enter key in textarea to trigger packing
+        document.getElementById('itemsInput').addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                runPacking();
+            }
+        });
+
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            loadWasm();
+
+            // Set up event listeners after DOM is ready
+            document.getElementById('runButton').addEventListener('click', runPacking);
+            document.getElementById('generateButton').addEventListener('click', generateTestData);
+            document.getElementById('downloadInputButton').addEventListener('click', window.downloadInputData);
+        });
+    </script>
+</body>
+</html>

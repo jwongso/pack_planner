@@ -2,6 +2,7 @@
 
 #include <string>
 #include <iomanip>
+#include <sstream>
 
 /**
  * @brief Represents an item with id, length, quantity, and weight properties
