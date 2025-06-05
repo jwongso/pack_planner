@@ -10,12 +10,18 @@ A high-performance C++20 pack planning application that efficiently organizes it
 - **High-Resolution Timing**: Microsecond precision timing utilities
 - **Comprehensive Benchmarking**: Built-in performance testing with detailed metrics
 - **Item Splitting**: Automatically splits items across packs when needed
+- **Emscripten or WebAssembly**: Support web client with efficient on-client computation via WebAssembly
 
 ## Build Requirements
 
 - C++20 compatible compiler (GCC 10+, Clang 10+)
 - CMake 3.20 or higher
 - Threading support
+
+## Build Requirements (WebAssembly)
+
+- Emscripten SDK (https://emscripten.org/docs/getting_started/downloads.html)
+- Python 3.x
 
 ## Building
 
@@ -25,6 +31,18 @@ cd build
 cmake ..
 make
 ```
+
+## Building Wasm (WebAssembly)
+
+```bash
+emcmake cmake -B build-wasm -DCMAKE_BUILD_TYPE=Release
+cmake --build build-wasm
+cd build-wasm
+cp ../index.html ../server.py .
+python server.py # To run the simple web server
+```
+
+Open http://localhost:8000 on your local web browser application.
 
 ## Usage
 
