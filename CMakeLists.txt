@@ -10,6 +10,8 @@ if(EMSCRIPTEN)
     message(STATUS "Building with Emscripten for WebAssembly")
     set(WASM_BUILD TRUE)
     set(CMAKE_EXECUTABLE_SUFFIX ".js")
+    set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   -pthread")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
     # Emscripten-specific compiler flags
     set(EMSCRIPTEN_FLAGS
@@ -19,6 +21,9 @@ if(EMSCRIPTEN)
         "-s EXPORT_NAME=\"createModule\""
         "-s EXPORTED_RUNTIME_METHODS=[\"ccall\",\"cwrap\"]"
         "-s EXPORT_ES6=1"
+        "-s ASSERTIONS"
+        "-s PTHREAD_POOL_SIZE=8"
+        "-s INITIAL_MEMORY=128MB"
         "-s --bind"
         "-O3"
     )
@@ -137,6 +142,16 @@ if(WASM_BUILD)
     add_executable(${PROJECT_NAME}_wasm src/wasm_bindings.cpp)
     target_include_directories(${PROJECT_NAME}_wasm PRIVATE ${PROJECT_SOURCE_DIR}/include)
     target_link_libraries(${PROJECT_NAME}_wasm ${PROJECT_NAME}_LIB)
+
+    set(FILES_TO_COPY server.py index.html tests/test_pack_planner.mjs)
+    foreach(f ${FILES_TO_COPY})
+        add_custom_command(
+            TARGET ${PROJECT_NAME}_wasm POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                    ${CMAKE_SOURCE_DIR}/${f}
+                    $<TARGET_FILE_DIR:${PROJECT_NAME}_wasm>/${f}
+        )
+    endforeach()
 else()
     # Regular executable for native builds
     set(MAIN_SRC
