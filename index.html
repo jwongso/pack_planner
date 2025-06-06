@@ -13,43 +13,6 @@
             background: #f5f5f5;
         }
 
-        // Download functions (make them globally accessible)
-        window.downloadInputData = function() {
-            if (!fullInputData || fullInputData.length === 0) {
-                alert('No full input data available to download');
-                return;
-            }
-
-            const jsonData = JSON.stringify(fullInputData, null, 2);
-            const blob = new Blob([jsonData], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `pack_planner_input_${fullInputData.length}_items.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        window.downloadResults = function() {
-            if (!fullResultsData || fullResultsData.length === 0) {
-                alert('No full results data available to download');
-                return;
-            }
-
-            const textData = fullResultsData.join('\n\n' + '='.repeat(50) + '\n\n');
-            const blob = new Blob([textData], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `pack_planner_results_${fullResultsData.length}_packs.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
         .container {
             display: flex;
             gap: 20px;
@@ -74,6 +37,13 @@
         }
 
         .input-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .input-group select {
             width: 100%;
             padding: 8px;
             border: 1px solid #ddd;
@@ -194,6 +164,28 @@
             </div>
 
             <div class="input-group">
+                <label for="sortOrder">Sort Order:</label>
+                <select id="sortOrder">
+                    <option value="0">Natural (Original Order)</option>
+                    <option value="1">Short to Long</option>
+                    <option value="2">Long to Short</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="strategyType">Strategy Type:</label>
+                <select id="strategyType">
+                    <option value="0">Blocking (Sequential)</option>
+                    <option value="1">Parallel (Multi-threaded)</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="threadCount">Thread Count (for Parallel Strategy):</label>
+                <input type="number" id="threadCount" value="4" min="1" max="32">
+            </div>
+
+            <div class="input-group">
                 <label for="itemCount">Number of Items to Generate:</label>
                 <input type="number" id="itemCount" value="20" min="1" max="20000000">
                 <small>Range: 1 to 20,000,000 items</small>
@@ -232,6 +224,43 @@
         // Store full datasets for download
         let fullInputData = null;
         let fullResultsData = null;
+
+        // Download functions (make them globally accessible)
+        function downloadInputData() {
+            if (!fullInputData || fullInputData.length === 0) {
+                alert('No full input data available to download');
+                return;
+            }
+
+            const jsonData = JSON.stringify(fullInputData, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pack_planner_input_${fullInputData.length}_items.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadResults() {
+            if (!fullResultsData || fullResultsData.length === 0) {
+                alert('No full results data available to download');
+                return;
+            }
+
+            const textData = fullResultsData.join('\n\n' + '='.repeat(50) + '\n\n');
+            const blob = new Blob([textData], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pack_planner_results_${fullResultsData.length}_packs.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
 
         // Load WASM module when page loads
         async function loadWasm() {
@@ -376,11 +405,15 @@
                 // Get input values
                 const maxItems = parseInt(document.getElementById('maxItems').value);
                 const maxWeight = parseFloat(document.getElementById('maxWeight').value);
+                const sortOrder = parseInt(document.getElementById('sortOrder').value);
+                const strategyType = parseInt(document.getElementById('strategyType').value);
+                const threadCount = parseInt(document.getElementById('threadCount').value);
                 const itemsText = document.getElementById('itemsInput').value.trim();
 
                 // Validate inputs
                 if (maxItems <= 0) throw new Error('Max items must be positive');
                 if (maxWeight <= 0) throw new Error('Max weight must be positive');
+                if (threadCount <= 0) throw new Error('Thread count must be positive');
                 if (!itemsText) throw new Error('Items input is empty');
 
                 // Parse items - use full data if available, otherwise parse from textarea
@@ -410,8 +443,15 @@
 
                 const startTime = performance.now();
 
-                // Call WASM function - pass items directly as JS array
-                const packedResults = planner.packItems(items, maxItems, maxWeight);
+                // Get planning stats first
+                const stats = planner.getPlanningStats(
+                    items, maxItems, maxWeight, sortOrder, strategyType, threadCount
+                );
+
+                // Call WASM function to get the packed results
+                const packedResults = planner.packItems(
+                    items, maxItems, maxWeight, sortOrder, strategyType, threadCount
+                );
 
                 const endTime = performance.now();
                 const processingTime = (endTime - startTime).toFixed(2);
@@ -427,12 +467,24 @@
                     const totalPacks = packedResults.size();
                     const packsToShow = Math.min(100, totalPacks);
 
+                    // Get strategy name from stats
+                    const strategyName = stats.strategyName;
+                    const sortingTime = stats.sortingTime.toFixed(3);
+                    const packingTime = stats.packingTime.toFixed(3);
+                    const totalTime = stats.totalTime.toFixed(3);
+                    const utilization = stats.utilizationPercent.toFixed(2);
+
                     let summaryHtml = `
                         <div style="background: #e8f5e8; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
                             <strong>📊 Summary:</strong><br>
                             • Total Packs: <strong>${totalPacks.toLocaleString()}</strong><br>
-                            • Processing Time: <strong>${processingTime}ms</strong><br>
+                            • Strategy: <strong>${strategyName}</strong><br>
+                            • Sorting Time: <strong>${sortingTime}ms</strong><br>
+                            • Packing Time: <strong>${packingTime}ms</strong><br>
+                            • Total Time: <strong>${totalTime}ms</strong><br>
+                            • JS Processing Time: <strong>${processingTime}ms</strong><br>
                             • Input Items: <strong>${items.length.toLocaleString()}</strong><br>
+                            • Utilization: <strong>${utilization}%</strong><br>
                             • Showing: <strong>First ${packsToShow} pack${packsToShow !== 1 ? 's' : ''}</strong>
                         </div>
                     `;
@@ -461,7 +513,7 @@
                     // Add event listener for download results button if it exists
                     const downloadResultsBtn = document.getElementById('downloadResultsButton');
                     if (downloadResultsBtn) {
-                        downloadResultsBtn.addEventListener('click', window.downloadResults);
+                        downloadResultsBtn.addEventListener('click', downloadResults);
                     }
 
                     statusEl.textContent = `✅ Success! Created ${totalPacks.toLocaleString()} packs in ${processingTime}ms`;
@@ -506,7 +558,7 @@
             // Set up event listeners after DOM is ready
             document.getElementById('runButton').addEventListener('click', runPacking);
             document.getElementById('generateButton').addEventListener('click', generateTestData);
-            document.getElementById('downloadInputButton').addEventListener('click', window.downloadInputData);
+            document.getElementById('downloadInputButton').addEventListener('click', downloadInputData);
         });
     </script>
 </body>

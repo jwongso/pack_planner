@@ -1,13 +1,13 @@
 import http.server
 import socketserver
 
-class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
+class ThreadFriendlyRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET')
+        self.send_header("Cross-Origin-Opener-Policy", "same-origin")
+        self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
         super().end_headers()
 
 PORT = 8000
-with socketserver.TCPServer(("", PORT), CORSRequestHandler) as httpd:
+with socketserver.TCPServer(("", PORT), ThreadFriendlyRequestHandler) as httpd:
     print(f"Serving at http://localhost:{PORT}")
     httpd.serve_forever()
