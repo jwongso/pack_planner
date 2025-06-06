@@ -264,9 +264,9 @@ TEST_F(PackPlannerTest, EdgeCaseZeroWeightItems) {
     auto result = planner.plan_packs(config, zero_weight_items);
 
     // Should be limited by max_items_per_pack
-    EXPECT_EQ(result.packs.size(), 3);
-    EXPECT_EQ(result.packs[0].get_total_items(), 0);
-    EXPECT_EQ(result.packs[1].get_total_items(), 0);
+    EXPECT_EQ(result.packs.size(), 2);
+    EXPECT_EQ(result.packs[0].get_total_items(), 10);
+    EXPECT_EQ(result.packs[1].get_total_items(), 5);
     EXPECT_DOUBLE_EQ(result.packs[0].get_total_weight(), 0.0);
     EXPECT_DOUBLE_EQ(result.packs[1].get_total_weight(), 0.0);
 }

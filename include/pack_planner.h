@@ -18,7 +18,10 @@ struct pack_planner_config {
     int max_items_per_pack = 100;
     double max_weight_per_pack = 200.0;
     strategy_type type = strategy_type::BLOCKING;
-    int thread_count = 4; // Used for parallel strategy
+    int thread_count = 4;
+
+    // C++20: default all comparisons
+    auto operator<=>(const pack_planner_config&) const = default;
 };
 
 /**
@@ -42,7 +45,8 @@ public:
     /**
      * @brief Construct a new Pack Planner object
      */
-    pack_planner() noexcept {}
+    pack_planner() noexcept
+        : m_strategy(pack_strategy_factory::create_strategy(strategy_type::BLOCKING)) {}
 
     /**
      * @brief Plan packs with given configuration and items
@@ -53,8 +57,6 @@ public:
     [[nodiscard]] pack_planner_result plan_packs(const pack_planner_config& config,
                                                  std::vector<item> items) {
         pack_planner_result result;
-
-        // Start total timing
         m_timer.start();
 
         // Sort items
@@ -63,28 +65,28 @@ public:
         sort_items(items, config.order);
         result.sorting_time = sort_timer.stop();
 
-        // Create strategy
-        auto strategy = pack_strategy_factory::create_strategy(
-            config.type, config.thread_count);
-        result.strategy_name = strategy->get_name();
+        // Create or reuse strategy if config changed
+        if (!m_strategy || config != m_config) {
+            m_strategy = pack_strategy_factory::create_strategy(config.type, config.thread_count);
+            m_config = config;
+        }
 
-        // Pack items using selected strategy
+        result.strategy_name = m_strategy->get_name();
+
+        // Pack
         timer pack_timer;
         pack_timer.start();
-        result.packs = strategy->pack_items(items, config.max_items_per_pack, config.max_weight_per_pack);
+        result.packs = m_strategy->pack_items(items, config.max_items_per_pack, config.max_weight_per_pack);
         result.packing_time = pack_timer.stop();
 
         result.total_time = m_timer.stop();
 
-        // Calculate total items
         result.total_items = 0;
         for (const auto& i : items) {
             result.total_items += i.get_quantity();
         }
 
-        // Calculate utilization
-        result.utilization_percent = calculate_utilization(result.packs,
-                                                           config.max_weight_per_pack);
+        result.utilization_percent = calculate_utilization(result.packs, config.max_weight_per_pack);
 
         return result;
     }
@@ -150,4 +152,6 @@ private:
     }
 
     timer m_timer;
+    std::unique_ptr<pack_strategy> m_strategy;
+    pack_planner_config m_config{};
 };

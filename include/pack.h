@@ -4,6 +4,7 @@
 #include <string>
 #include <algorithm>
 #include <sstream>
+#include <limits>
 #include "item.h"
 
 /**
@@ -57,13 +58,22 @@ public:
         }
 
         const int max_by_items = max_items - m_total_items;
-
-        // Only calculate weight constraint if we haven't already hit the item limit
         int can_add = std::min(max_by_items, remaining_quantity);
+
         if (can_add > 0) {
-            // Calculate how many we can fit by weight
             const double remaining_weight = max_weight - m_total_weight;
-            const int max_by_weight = static_cast<int>(remaining_weight / item.get_weight());
+
+            // Handle zero or near-zero weight to prevent underflow
+            const double weight = item.get_weight();
+            constexpr double SAFE_MIN_WEIGHT = 1e-10;
+
+            int max_by_weight = (weight <= SAFE_MIN_WEIGHT)
+                                    ? can_add
+                                    : static_cast<int>(
+                                          std::min(remaining_weight / weight,
+                                                   static_cast<double>(std::numeric_limits<int>::max()))
+                                          );
+
             can_add = std::min(can_add, max_by_weight);
         }
 
@@ -99,12 +109,16 @@ public:
      * @return int Number of items successfully added
      */
     [[nodiscard]] int add_partial_item(int id, int length, int quantity, double weight,
-                       int max_items, double max_weight) noexcept {
+                                       int max_items, double max_weight) noexcept {
         const int max_by_items = max_items - m_total_items;
         const double weight_remaining = max_weight - m_total_weight;
-        const int max_by_weight = static_cast<int>(weight_remaining / weight);
-        const int can_add = std::min({max_by_items, max_by_weight, quantity});
 
+        // Handle zero weight case - if weight is 0, weight constraint doesn't apply
+        const int max_by_weight = (weight == 0.0) ? quantity :
+                    static_cast<int>(std::min(static_cast<double>(std::numeric_limits<int>::max()),
+                                                                weight_remaining / weight));
+
+        const int can_add = std::min({max_by_items, max_by_weight, quantity});
         if (can_add > 0) {
             m_items.emplace_back(id, length, can_add, weight);
             m_total_items += can_add;
