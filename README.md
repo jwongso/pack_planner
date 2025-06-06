@@ -12,6 +12,18 @@ A high-performance C++20 pack planning application that efficiently organizes it
 - **Item Splitting**: Automatically splits items across packs when needed
 - **Emscripten or WebAssembly**: Support web client with efficient on-client computation via WebAssembly
 
+## Safety Constraints
+
+To prevent numerical overflows or memory exhaustion, the following practical limits are used internally:
+
+```cpp
+constexpr int SAFE_MAX_LENGTH   = 1'000'000;
+constexpr int SAFE_MAX_QUANTITY = 10'000;
+constexpr double SAFE_MAX_WEIGHT = 1e6;
+```
+
+Items exceeding these limits are ignored during the packing process to maintain stability and ensure safe memory usage.
+
 ## Build Requirements
 
 - C++20 compatible compiler (GCC 10+, Clang 10+)
