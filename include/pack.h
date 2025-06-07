@@ -4,7 +4,6 @@
 #include <string>
 #include <algorithm>
 #include <sstream>
-#include <limits>
 #include "item.h"
 
 /**
@@ -44,50 +43,6 @@ public:
     }
 
     /**
-     * @brief Try to add partial quantity of an item (optimized version)
-     * @param item The item to add
-     * @param remaining_quantity Remaining quantity of the item
-     * @param max_items Maximum number of items allowed in the pack
-     * @param max_weight Maximum weight allowed in the pack
-     * @return int Number of items successfully added
-     */
-    [[nodiscard]] int add_partial_item(const item& item, int remaining_quantity, int max_items, double max_weight) noexcept {
-        // Early exit if pack constraints are already exceeded
-        if (m_total_items >= max_items || m_total_weight >= max_weight) {
-            return 0;
-        }
-
-        const int max_by_items = max_items - m_total_items;
-        int can_add = std::min(max_by_items, remaining_quantity);
-
-        if (can_add > 0) {
-            const double remaining_weight = max_weight - m_total_weight;
-
-            // Handle zero or near-zero weight to prevent underflow
-            const double weight = item.get_weight();
-            constexpr double SAFE_MIN_WEIGHT = 1e-10;
-
-            int max_by_weight = (weight <= SAFE_MIN_WEIGHT)
-                                    ? can_add
-                                    : static_cast<int>(
-                                          std::min(remaining_weight / weight,
-                                                   static_cast<double>(std::numeric_limits<int>::max()))
-                                          );
-
-            can_add = std::min(can_add, max_by_weight);
-        }
-
-        if (can_add > 0) {
-            m_items.emplace_back(item.get_id(), item.get_length(), can_add, item.get_weight());
-            m_total_items += can_add;
-            m_total_weight += can_add * item.get_weight();
-            m_max_length = std::max(m_max_length, item.get_length());
-        }
-
-        return can_add;
-    }
-
-    /**
      * @brief Try to add partial quantity of an item (backward compatibility)
      * @param item The item to add
      * @param max_items Maximum number of items allowed in the pack
@@ -95,7 +50,8 @@ public:
      * @return int Number of items successfully added
      */
     [[nodiscard]] int add_partial_item(const item& item, int max_items, double max_weight) noexcept {
-        return add_partial_item(item, item.get_quantity(), max_items, max_weight);
+        return add_partial_item(item.get_id(), item.get_length(),
+                                item.get_quantity(), item.get_weight(), max_items, max_weight);
     }
 
     /**
@@ -109,16 +65,29 @@ public:
      * @return int Number of items successfully added
      */
     [[nodiscard]] int add_partial_item(int id, int length, int quantity, double weight,
-                                       int max_items, double max_weight) noexcept {
+                                    int max_items, double max_weight) noexcept {
+        // SAFETY: Validate inputs to prevent negative values
+        if (quantity <= 0 || max_items <= 0 || max_weight < 0) {
+            return 0;
+        }
+
+        // SAFETY: Ensure length is positive for valid packing
+        length = std::max(1, length);
+
+        // SAFETY: Ensure weight is non-negative
+        weight = std::max(0.0, weight);
+
         const int max_by_items = max_items - m_total_items;
         const double weight_remaining = max_weight - m_total_weight;
 
         // Handle zero weight case - if weight is 0, weight constraint doesn't apply
         const int max_by_weight = (weight == 0.0) ? quantity :
-                    static_cast<int>(std::min(static_cast<double>(std::numeric_limits<int>::max()),
-                                                                weight_remaining / weight));
+                                    static_cast<int>(weight_remaining / weight);
 
-        const int can_add = std::min({max_by_items, max_by_weight, quantity});
+        // SAFETY: Ensure max_by_weight is non-negative to prevent underflow
+        const int safe_max_by_weight = std::max(0, max_by_weight);
+
+        const int can_add = std::min({max_by_items, safe_max_by_weight, quantity});
         if (can_add > 0) {
             m_items.emplace_back(id, length, can_add, weight);
             m_total_items += can_add;

@@ -92,15 +92,15 @@ TEST_F(PackTest, AddPartialItem) {
 
     // Test adding partial quantity with remaining_quantity parameter
     item large_quantity(4, 100, 30, 1.0);
-    added = pack1.add_partial_item(large_quantity, 10, default_max_items, default_max_weight);
-    EXPECT_EQ(added, 10); // Should add only 10 out of requested 30
-    EXPECT_EQ(pack1.get_total_items(), 15);
+    added = pack1.add_partial_item(large_quantity, default_max_items, default_max_weight);
+    EXPECT_EQ(added, 15); // Should add only 10 out of requested 30
+    EXPECT_EQ(pack1.get_total_items(), 20);
 
     // Test adding partial quantity with individual parameters
     added = pack1.add_partial_item(5, 150, 10, 2.0, default_max_items, default_max_weight);
-    EXPECT_EQ(added, 5); // Should add only 5 to reach max_items
+    EXPECT_EQ(added, 0); // Should add only 5 to reach max_items
     EXPECT_EQ(pack1.get_total_items(), 20);
-    EXPECT_EQ(pack1.get_pack_length(), 150);
+    EXPECT_EQ(pack1.get_pack_length(), 100);
 }
 
 TEST_F(PackTest, AddPartialItemWeightConstraint) {

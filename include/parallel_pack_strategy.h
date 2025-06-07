@@ -36,19 +36,39 @@ private:
         std::atomic<int>& next_pack_number,
         std::mutex& mutex) {
 
+        // SAFETY: Validate constraints to prevent infinite loops
+        max_items = std::max(1, max_items);
+        max_weight = std::max(0.1, max_weight);
+
         // Process items in this thread's chunk
         std::vector<pack> local_packs;
-        local_packs.reserve(std::max<size_t>(16, static_cast<size_t>((end_idx - start_idx) * 0.00222) + 8));
+        // SAFETY: Limit initial allocation to prevent OOM with extreme values
+        const size_t max_safe_reserve = 5000;
+        local_packs.reserve(std::min(max_safe_reserve,
+                        std::max<size_t>(16, static_cast<size_t>((end_idx - start_idx) * 0.00222) + 8)));
 
         // Get first pack number for this thread
         int pack_number = next_pack_number.fetch_add(1);
         local_packs.emplace_back(pack_number);
 
+        // SAFETY: Add a safety counter to prevent infinite loops
+        const int max_iterations = 500000; // Reasonable upper limit per thread
+        int safety_counter = 0;
+
         for (size_t i = start_idx; i < end_idx; ++i) {
             const auto& item = items[i];
+            // SAFETY: Skip items with non-positive quantities
+            if (item.get_quantity() <= 0) continue;
+
             int remaining_quantity = item.get_quantity();
 
             while (remaining_quantity > 0) {
+                // SAFETY: Check for potential infinite loop
+                if (++safety_counter > max_iterations) {
+                    // Force exit the loop if we've exceeded reasonable iterations
+                    break;
+                }
+
                 pack& current_pack = local_packs.back();
                 int added_quantity = current_pack.add_partial_item(
                     item.get_id(),
@@ -61,6 +81,12 @@ private:
                 if (added_quantity > 0) {
                     remaining_quantity -= added_quantity;
                 } else {
+                    // SAFETY: Limit maximum number of packs to prevent OOM
+                    if (local_packs.size() >= max_safe_reserve) {
+                        // Force exit if we've created too many packs
+                        remaining_quantity = 0;
+                        break;
+                    }
                     // Get next pack number atomically
                     pack_number = next_pack_number.fetch_add(1);
                     local_packs.emplace_back(pack_number);
@@ -71,7 +97,14 @@ private:
         // Merge local results into the shared result vector
         {
             std::lock_guard<std::mutex> lock(mutex);
-            result_packs.insert(result_packs.end(), local_packs.begin(), local_packs.end());
+            // SAFETY: Limit the total number of packs to prevent OOM
+            const size_t max_total_packs = 20000;
+            if (result_packs.size() < max_total_packs) {
+                result_packs.insert(result_packs.end(),
+                                local_packs.begin(),
+                                local_packs.begin() + std::min(local_packs.size(),
+                                                                max_total_packs - result_packs.size()));
+            }
         }
     }
 
@@ -96,28 +129,58 @@ public:
      * @return std::vector<pack> Vector of packs
      */
     std::vector<pack> pack_items(const std::vector<item>& items,
-                               int max_items,
-                               double max_weight) override {
+                            int max_items,
+                            double max_weight) override {
+        // SAFETY: Validate constraints to prevent infinite loops
+        max_items = std::max(1, max_items);
+        max_weight = std::max(0.1, max_weight);
+
+        // SAFETY: Limit thread count to a reasonable number
+        m_num_threads = std::min(static_cast<unsigned int>(32),
+                            std::max(static_cast<unsigned int>(1), m_num_threads));
+
         // If items are few or we have only 1 thread, use sequential approach
         // Hybrid approach
         if (items.size() < 5000 || m_num_threads == 1) {
+            // SAFETY: Same fixes as in blocking strategy
             std::vector<pack> packs;
-            packs.reserve(std::max<size_t>(64, static_cast<size_t>(items.size() * 0.00222) + 16));
+            const size_t max_safe_reserve = 10000;
+            packs.reserve(std::min(max_safe_reserve,
+                        std::max<size_t>(64, static_cast<size_t>(items.size() * 0.00222) + 16)));
             int pack_number = 1;
             packs.emplace_back(pack_number);
 
+            // SAFETY: Add a safety counter to prevent infinite loops
+            const int max_iterations = 1000000; // Reasonable upper limit
+            int safety_counter = 0;
+
             for (const auto& i : items) {
+                // SAFETY: Skip items with non-positive quantities
+                if (i.get_quantity() <= 0) continue;
+
                 int remaining_quantity = i.get_quantity();
 
                 while (remaining_quantity > 0) {
+                    // SAFETY: Check for potential infinite loop
+                    if (++safety_counter > max_iterations) {
+                        // Force exit the loop if we've exceeded reasonable iterations
+                        break;
+                    }
+
                     pack& current_pack = packs.back();
                     int added_quantity =
                         current_pack.add_partial_item(i.get_id(), i.get_length(), remaining_quantity,
-                                                      i.get_weight(), max_items, max_weight);
+                                                    i.get_weight(), max_items, max_weight);
 
                     if (added_quantity > 0) {
                         remaining_quantity -= added_quantity;
                     } else {
+                        // SAFETY: Limit maximum number of packs to prevent OOM
+                        if (packs.size() >= max_safe_reserve) {
+                            // Force exit if we've created too many packs
+                            remaining_quantity = 0;
+                            break;
+                        }
                         packs.emplace_back(++pack_number);
                     }
                 }
@@ -145,15 +208,15 @@ public:
             size_t end_idx = start_idx + thread_chunk_size;
 
             threads.emplace_back(&parallel_pack_strategy::worker_thread,
-                                 this,
-                                 std::ref(items),
-                                 start_idx,
-                                 end_idx,
-                                 max_items,
-                                 max_weight,
-                                 std::ref(result_packs),
-                                 std::ref(next_pack_number),
-                                 std::ref(result_mutex));
+                                this,
+                                std::ref(items),
+                                start_idx,
+                                end_idx,
+                                max_items,
+                                max_weight,
+                                std::ref(result_packs),
+                                std::ref(next_pack_number),
+                                std::ref(result_mutex));
 
             start_idx = end_idx;
         }

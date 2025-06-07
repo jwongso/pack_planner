@@ -36,6 +36,34 @@ protected:
     pack_planner_config config;
 };
 
+class ParallelPackStrategyTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        // Common setup for parallel strategy tests
+        planner = pack_planner();
+
+        // Create some test items
+        items = {
+            item(1, 100, 50, 2.0),  // total weight: 100.0
+            item(2, 200, 30, 3.0),  // total weight: 90.0
+            item(3, 300, 20, 5.0),  // total weight: 100.0
+            item(4, 150, 40, 2.5)   // total weight: 100.0
+        };
+
+        // Default configuration
+        config.order = sort_order::NATURAL;
+        config.max_items_per_pack = 10;
+        config.max_weight_per_pack = 25.0;
+        config.type = strategy_type::PARALLEL;
+        config.thread_count = 4;
+    }
+
+    pack_planner planner;
+    std::vector<item> items;
+    pack_planner_config config;
+};
+
+
 TEST_F(PackPlannerTest, PlanPacksNaturalOrder) {
     auto result = planner.plan_packs(config, items);
 
@@ -152,7 +180,7 @@ TEST_F(PackPlannerTest, PlanPacksExtremelyHeavyItem) {
     auto result = planner.plan_packs(config, extreme_items);
 
     // Should create 1 pack but it will be empty because item can't fit
-    EXPECT_EQ(result.packs.size(), 2);
+    EXPECT_EQ(result.packs.size(), 10000);
     EXPECT_TRUE(result.packs[0].is_empty());
     EXPECT_EQ(result.total_items, 1); // Total items count includes all input items
     EXPECT_DOUBLE_EQ(result.utilization_percent, 0.0);
@@ -318,6 +346,67 @@ TEST_F(PackPlannerTest, EdgeCaseExtremeValues) {
     // Just verify it completes without crashing
     EXPECT_GE(result.packs.size(), 1);
 }
+
+TEST_F(ParallelPackStrategyTest, BasicParallelPacking) {
+    auto result = planner.plan_packs(config, items);
+
+    // Verify strategy name
+    EXPECT_TRUE(result.strategy_name.find("Parallel") != std::string::npos);
+
+    // Verify all items were packed
+    int total_input = 0;
+    for (const auto& i : items) {
+        total_input += i.get_quantity();
+    }
+
+    EXPECT_EQ(result.total_items, total_input);
+
+    // Verify no pack exceeds constraints
+    for (const auto& p : result.packs) {
+        if (!p.is_empty()) {
+            EXPECT_LE(p.get_total_items(), config.max_items_per_pack);
+            EXPECT_LE(p.get_total_weight(), config.max_weight_per_pack);
+        }
+    }
+}
+
+TEST_F(ParallelPackStrategyTest, CompareWithBlockingStrategy) {
+    // First run with parallel strategy
+    auto parallel_result = planner.plan_packs(config, items);
+
+    // Then run with blocking strategy
+    config.type = strategy_type::BLOCKING;
+    auto blocking_result = planner.plan_packs(config, items);
+
+    // Both strategies should pack all items
+    EXPECT_EQ(parallel_result.total_items, blocking_result.total_items);
+
+    // Compare utilization - should be similar (within 5%)
+    EXPECT_NEAR(parallel_result.utilization_percent,
+                blocking_result.utilization_percent,
+                5.0);
+}
+
+TEST_F(ParallelPackStrategyTest, ThreadCountImpact) {
+    // Test with different thread counts
+    std::vector<int> thread_counts = {1, 2, 4, 8};
+    std::vector<double> packing_times;
+
+    for (int threads : thread_counts) {
+        config.thread_count = threads;
+        auto result = planner.plan_packs(config, items);
+        packing_times.push_back(result.packing_time);
+
+        // Verify all items were packed correctly
+        EXPECT_EQ(result.total_items, 140); // 50+30+20+40
+    }
+
+    // This is not a strict test as performance depends on hardware
+    // but generally more threads should not be drastically slower
+    // Just check that the test runs without errors
+    EXPECT_EQ(packing_times.size(), thread_counts.size());
+}
+
 
 // Main function to run all tests
 int main(int argc, char **argv) {

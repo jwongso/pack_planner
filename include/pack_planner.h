@@ -55,20 +55,26 @@ public:
      * @return pack_planner_result Results of the planning process
      */
     [[nodiscard]] pack_planner_result plan_packs(const pack_planner_config& config,
-                                                 std::vector<item> items) {
+                                                std::vector<item> items) {
         pack_planner_result result;
         m_timer.start();
+
+        // SAFETY: Validate and sanitize configuration
+        pack_planner_config safe_config = config;
+        safe_config.max_items_per_pack = std::max(1, config.max_items_per_pack);
+        safe_config.max_weight_per_pack = std::max(0.1, config.max_weight_per_pack);
+        safe_config.thread_count = std::clamp(config.thread_count, 1, 32);
 
         // Sort items
         timer sort_timer;
         sort_timer.start();
-        sort_items(items, config.order);
+        sort_items(items, safe_config.order);
         result.sorting_time = sort_timer.stop();
 
         // Create or reuse strategy if config changed
         if (!m_strategy || config != m_config) {
-            m_strategy = pack_strategy_factory::create_strategy(config.type, config.thread_count);
-            m_config = config;
+            m_strategy = pack_strategy_factory::create_strategy(safe_config.type, safe_config.thread_count);
+            m_config = safe_config;
         }
 
         result.strategy_name = m_strategy->get_name();
@@ -76,17 +82,22 @@ public:
         // Pack
         timer pack_timer;
         pack_timer.start();
-        result.packs = m_strategy->pack_items(items, config.max_items_per_pack, config.max_weight_per_pack);
+        result.packs = m_strategy->pack_items(items, safe_config.max_items_per_pack, safe_config.max_weight_per_pack);
         result.packing_time = pack_timer.stop();
 
         result.total_time = m_timer.stop();
 
+        // SAFETY: Calculate total items safely
         result.total_items = 0;
         for (const auto& i : items) {
-            result.total_items += i.get_quantity();
+            // SAFETY: Skip negative quantities and avoid overflow
+            if (i.get_quantity() > 0 &&
+                result.total_items <= std::numeric_limits<int>::max() - i.get_quantity()) {
+                result.total_items += i.get_quantity();
+            }
         }
 
-        result.utilization_percent = calculate_utilization(result.packs, config.max_weight_per_pack);
+        result.utilization_percent = calculate_utilization(result.packs, safe_config.max_weight_per_pack);
 
         return result;
     }
@@ -111,23 +122,32 @@ public:
      * @return double Utilization percentage
      */
     [[nodiscard]] double calculate_utilization(const std::vector<pack>& packs,
-                                               double max_weight) const noexcept {
-        if (packs.empty()) return 0.0;
+                                            double max_weight) const noexcept {
+        if (packs.empty() || max_weight <= 0.0) return 0.0;
 
         double total_weight = 0.0;
         int non_empty_packs = 0;
 
         for (const auto& p : packs) {
             if (!p.is_empty()) {
-                total_weight += p.get_total_weight();
-                non_empty_packs++;
+                // SAFETY: Avoid potential floating-point overflow
+                if (p.get_total_weight() >= 0.0 &&
+                    total_weight <= std::numeric_limits<double>::max() - p.get_total_weight()) {
+                    total_weight += p.get_total_weight();
+                    non_empty_packs++;
+                }
             }
         }
 
         if (non_empty_packs == 0) return 0.0;
 
         double max_possible_weight = non_empty_packs * max_weight;
-        return (total_weight / max_possible_weight) * 100.0;
+
+        // SAFETY: Avoid division by zero
+        if (max_possible_weight <= 0.0) return 0.0;
+
+        // SAFETY: Clamp result to valid percentage range
+        return std::clamp((total_weight / max_possible_weight) * 100.0, 0.0, 100.0);
     }
 
 private:
