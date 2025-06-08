@@ -21,7 +21,17 @@ public class ParallelPackStrategy : IPackStrategy
     /// <param name="threadCount">Number of threads to use (0 = use processor count)</param>
     public ParallelPackStrategy(int threadCount = 4)
     {
-        _numThreads = threadCount == 0 ? Environment.ProcessorCount : threadCount;
+        if (threadCount == 0)
+        {
+            _numThreads = Environment.ProcessorCount;
+        }
+        else
+        {
+            _numThreads = threadCount;
+        }
+        
+        // SAFETY: Limit thread count to a reasonable number
+        _numThreads = Math.Clamp(_numThreads, 1, 32);
     }
 
     /// <summary>
@@ -89,19 +99,38 @@ public class ParallelPackStrategy : IPackStrategy
     /// <returns>List of packs</returns>
     private static List<Pack> PackItemsSequential(IReadOnlyList<Item> items, int maxItems, double maxWeight)
     {
+        // SAFETY: Same fixes as in blocking strategy
+        maxItems = Math.Max(1, maxItems);
+        maxWeight = Math.Max(0.1, maxWeight);
+
         var packs = new List<Pack>();
+        const int maxSafeReserve = 10000;
         int estimatedPacks = Math.Max(64, (int)(items.Count * 0.00222) + 16);
-        packs.Capacity = estimatedPacks;
+        packs.Capacity = Math.Min(maxSafeReserve, estimatedPacks);
 
         int packNumber = 1;
         packs.Add(new Pack(packNumber));
 
+        // SAFETY: Add a safety counter to prevent infinite loops
+        const int maxIterations = 1000000; // Reasonable upper limit
+        int safetyCounter = 0;
+
         foreach (var item in items)
         {
+            // SAFETY: Skip items with non-positive quantities
+            if (item.Quantity <= 0) continue;
+
             int remainingQuantity = item.Quantity;
 
             while (remainingQuantity > 0)
             {
+                // SAFETY: Check for potential infinite loop
+                if (++safetyCounter > maxIterations)
+                {
+                    // Force exit the loop if we've exceeded reasonable iterations
+                    break;
+                }
+
                 var currentPack = packs[^1];
                 int addedQuantity = currentPack.AddPartialItem(
                     item.Id, item.Length, remainingQuantity,
@@ -113,6 +142,13 @@ public class ParallelPackStrategy : IPackStrategy
                 }
                 else
                 {
+                    // SAFETY: Limit maximum number of packs to prevent OOM
+                    if (packs.Count >= maxSafeReserve)
+                    {
+                        // Force exit if we've created too many packs
+                        remainingQuantity = 0;
+                        break;
+                    }
                     packs.Add(new Pack(++packNumber));
                 }
             }
@@ -142,10 +178,16 @@ public class ParallelPackStrategy : IPackStrategy
         ref int nextPackNumber,
         object packNumberLock)
     {
+        // SAFETY: Validate constraints to prevent infinite loops
+        maxItems = Math.Max(1, maxItems);
+        maxWeight = Math.Max(0.1, maxWeight);
+
         // Process items in this thread's chunk
         var localPacks = new List<Pack>();
+        // SAFETY: Limit initial allocation to prevent OOM with extreme values
+        const int maxSafeReserve = 5000;
         int estimatedLocalPacks = Math.Max(16, (int)((endIdx - startIdx) * 0.00222) + 8);
-        localPacks.Capacity = estimatedLocalPacks;
+        localPacks.Capacity = Math.Min(maxSafeReserve, estimatedLocalPacks);
 
         // Get first pack number for this thread
         int packNumber;
@@ -155,13 +197,27 @@ public class ParallelPackStrategy : IPackStrategy
         }
         localPacks.Add(new Pack(packNumber));
 
+        // SAFETY: Add a safety counter to prevent infinite loops
+        const int maxIterations = 500000; // Reasonable upper limit per thread
+        int safetyCounter = 0;
+
         for (int i = startIdx; i < endIdx; i++)
         {
             var item = items[i];
+            // SAFETY: Skip items with non-positive quantities
+            if (item.Quantity <= 0) continue;
+
             int remainingQuantity = item.Quantity;
 
             while (remainingQuantity > 0)
             {
+                // SAFETY: Check for potential infinite loop
+                if (++safetyCounter > maxIterations)
+                {
+                    // Force exit the loop if we've exceeded reasonable iterations
+                    break;
+                }
+
                 var currentPack = localPacks[^1];
                 int addedQuantity = currentPack.AddPartialItem(
                     item.Id,
@@ -177,6 +233,13 @@ public class ParallelPackStrategy : IPackStrategy
                 }
                 else
                 {
+                    // SAFETY: Limit maximum number of packs to prevent OOM
+                    if (localPacks.Count >= maxSafeReserve)
+                    {
+                        // Force exit if we've created too many packs
+                        remainingQuantity = 0;
+                        break;
+                    }
                     // Get next pack number atomically
                     lock (packNumberLock)
                     {
@@ -188,9 +251,14 @@ public class ParallelPackStrategy : IPackStrategy
         }
 
         // Add local results to the shared result collection
+        // SAFETY: Limit the total number of packs to prevent OOM
+        const int maxTotalPacks = 20000;
+        int packsToAdd = 0;
         foreach (var pack in localPacks)
         {
+            if (packsToAdd >= maxTotalPacks) break;
             resultPacks.Add(pack);
+            packsToAdd++;
         }
     }
 }

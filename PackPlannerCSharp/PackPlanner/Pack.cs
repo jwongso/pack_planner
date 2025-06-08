@@ -143,10 +143,28 @@ public class Pack
     public int AddPartialItem(int id, int length, int quantity, double weight,
                              int maxItems, double maxWeight)
     {
+        // SAFETY: Validate inputs to prevent negative values
+        if (quantity <= 0 || maxItems <= 0 || maxWeight < 0)
+        {
+            return 0;
+        }
+
+        // SAFETY: Ensure length is positive for valid packing
+        length = Math.Max(1, length);
+
+        // SAFETY: Ensure weight is non-negative
+        weight = Math.Max(0.0, weight);
+
         int maxByItems = maxItems - _totalItems;
         double weightRemaining = maxWeight - _totalWeight;
-        int maxByWeight = (int)(weightRemaining / weight);
-        int canAdd = Math.Min(Math.Min(maxByItems, maxByWeight), quantity);
+
+        // Handle zero weight case - if weight is 0, weight constraint doesn't apply
+        int maxByWeight = (weight == 0.0) ? quantity : (int)(weightRemaining / weight);
+
+        // SAFETY: Ensure maxByWeight is non-negative to prevent underflow
+        int safeMaxByWeight = Math.Max(0, maxByWeight);
+
+        int canAdd = Math.Min(Math.Min(maxByItems, safeMaxByWeight), quantity);
 
         if (canAdd > 0)
         {

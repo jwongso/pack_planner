@@ -98,29 +98,45 @@ public class PackPlanner
         // Start total timing
         _timer.Start();
 
+        // SAFETY: Validate and sanitize configuration
+        var safeConfig = config with
+        {
+            MaxItemsPerPack = Math.Max(1, config.MaxItemsPerPack),
+            MaxWeightPerPack = Math.Max(0.1, config.MaxWeightPerPack),
+            ThreadCount = Math.Clamp(config.ThreadCount, 1, 32)
+        };
+
         // Sort items
         var sortTimer = new Timer();
         sortTimer.Start();
-        SortOrderExtensions.SortItems(items, config.Order);
+        SortOrderExtensions.SortItems(items, safeConfig.Order);
         double sortingTime = sortTimer.Stop();
 
         // Create strategy
-        var strategy = PackStrategyFactory.CreateStrategy(config.Type, config.ThreadCount);
+        var strategy = PackStrategyFactory.CreateStrategy(safeConfig.Type, safeConfig.ThreadCount);
         string strategyName = strategy.Name;
 
         // Pack items using selected strategy
         var packTimer = new Timer();
         packTimer.Start();
-        var packs = strategy.PackItems(items, config.MaxItemsPerPack, config.MaxWeightPerPack);
+        var packs = strategy.PackItems(items, safeConfig.MaxItemsPerPack, safeConfig.MaxWeightPerPack);
         double packingTime = packTimer.Stop();
 
         double totalTime = _timer.Stop();
 
-        // Calculate total items
-        int totalItems = items.Sum(i => i.Quantity);
+        // SAFETY: Calculate total items safely
+        int totalItems = 0;
+        foreach (var item in items)
+        {
+            // SAFETY: Skip negative quantities and avoid overflow
+            if (item.Quantity > 0 && totalItems <= int.MaxValue - item.Quantity)
+            {
+                totalItems += item.Quantity;
+            }
+        }
 
         // Calculate utilization
-        double utilizationPercent = CalculateUtilization(packs, config.MaxWeightPerPack);
+        double utilizationPercent = CalculateUtilization(packs, safeConfig.MaxWeightPerPack);
 
         return new PackPlannerResult
         {
@@ -162,11 +178,29 @@ public class PackPlanner
     {
         var nonEmptyPacks = packs.Where(p => !p.IsEmpty).ToList();
         
-        if (nonEmptyPacks.Count == 0) return 0.0;
+        if (nonEmptyPacks.Count == 0 || maxWeight <= 0.0) return 0.0;
 
-        double totalWeight = nonEmptyPacks.Sum(p => p.TotalWeight);
-        double maxPossibleWeight = nonEmptyPacks.Count * maxWeight;
-        
-        return (totalWeight / maxPossibleWeight) * 100.0;
+        double totalWeight = 0.0;
+        int validPacks = 0;
+
+        foreach (var pack in nonEmptyPacks)
+        {
+            // SAFETY: Avoid potential floating-point overflow
+            if (pack.TotalWeight >= 0.0 && totalWeight <= double.MaxValue - pack.TotalWeight)
+            {
+                totalWeight += pack.TotalWeight;
+                validPacks++;
+            }
+        }
+
+        if (validPacks == 0) return 0.0;
+
+        double maxPossibleWeight = validPacks * maxWeight;
+
+        // SAFETY: Avoid division by zero
+        if (maxPossibleWeight <= 0.0) return 0.0;
+
+        // SAFETY: Clamp result to valid percentage range
+        return Math.Clamp((totalWeight / maxPossibleWeight) * 100.0, 0.0, 100.0);
     }
 }

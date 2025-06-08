@@ -11,6 +11,8 @@ A high-performance C# pack planning application that efficiently organizes items
 - **Comprehensive Benchmarking**: Built-in performance testing with detailed metrics
 - **Item Splitting**: Automatically splits items across packs when needed
 - **Thread-Safe Parallel Processing**: Multi-threaded packing strategy for large datasets
+- **Input Validation & Safety**: Comprehensive validation of inputs with safety constraints
+- **Overflow Protection**: Safe arithmetic operations to prevent integer and floating-point overflow
 - **Modern C# Features**: Uses records, pattern matching, nullable reference types, and other C# 9+ features
 
 ## Build Requirements
@@ -136,6 +138,15 @@ The packing algorithm uses a greedy approach:
 - **Collection Expressions**: Simplified collection initialization
 - **Local Functions**: Encapsulated helper methods for better performance
 - **Span<T>**: Zero-allocation string parsing where applicable
+
+### Safety Features
+
+- **Input Validation**: All configuration and item inputs are validated for positive values
+- **Overflow Protection**: Safe arithmetic operations prevent integer and floating-point overflow
+- **Constraint Sanitization**: Configuration values are clamped to safe ranges (e.g., thread count 1-32)
+- **Error Handling**: Graceful handling of invalid inputs with appropriate error messages
+- **Boundary Checks**: Proper validation of pack constraints and item quantities
+- **Zero-Weight Handling**: Special handling for items with zero weight to prevent division by zero
 
 ## Project Structure
 

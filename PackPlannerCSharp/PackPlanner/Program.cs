@@ -124,6 +124,12 @@ public class Program
             int maxItems = int.Parse(firstLineParts[1].Trim());
             double maxWeight = double.Parse(firstLineParts[2].Trim(), CultureInfo.InvariantCulture);
 
+            // SAFETY: Validate configuration values
+            if (maxItems <= 0 || maxWeight <= 0.0)
+            {
+                return false;
+            }
+
             config = config with
             {
                 Order = order,
@@ -151,6 +157,12 @@ public class Program
                 int length = int.Parse(itemParts[1].Trim());
                 int quantity = int.Parse(itemParts[2].Trim());
                 double weight = double.Parse(itemParts[3].Trim(), CultureInfo.InvariantCulture);
+
+                // SAFETY: Validate item values
+                if (length <= 0 || quantity <= 0 || weight < 0.0)
+                {
+                    continue; // Skip invalid items
+                }
 
                 items.Add(new Item(id, length, quantity, weight));
             }
