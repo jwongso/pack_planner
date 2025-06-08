@@ -10,6 +10,8 @@ A high-performance C++20 pack planning application that efficiently organizes it
 - **High-Resolution Timing**: Microsecond precision timing utilities
 - **Comprehensive Benchmarking**: Built-in performance testing with detailed metrics
 - **Item Splitting**: Automatically splits items across packs when needed
+- **Input Validation & Safety**: Comprehensive validation of inputs with safety constraints
+- **Overflow Protection**: Safe arithmetic operations to prevent integer and floating-point overflow
 - **Emscripten or WebAssembly**: Support web client with efficient on-client computation via WebAssembly
 
 ## Safety Constraints
@@ -165,6 +167,15 @@ The packing algorithm uses a greedy approach:
 - **Efficient constraint checking**: Minimal computational overhead
 - **Memory optimization**: Minimal memory allocations during packing
 - **Cache-friendly**: Sequential access patterns for better performance
+
+### Safety Features
+
+- **Input Validation**: All configuration and item inputs are validated for positive values
+- **Overflow Protection**: Safe arithmetic operations prevent integer and floating-point overflow
+- **Constraint Sanitization**: Configuration values are clamped to safe ranges (e.g., thread count 1-32)
+- **Error Handling**: Graceful handling of invalid inputs with appropriate error messages
+- **Boundary Checks**: Proper validation of pack constraints and item quantities
+- **Zero-Weight Handling**: Special handling for items with zero weight to prevent division by zero
 
 ## Project Structure
 
