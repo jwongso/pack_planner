@@ -7,10 +7,10 @@ std::unique_ptr<pack_strategy> pack_strategy_factory::create_strategy(
     int thread_count) {
 
     switch (type) {
-        case strategy_type::BLOCKING:
+        case strategy_type::BLOCKING_FIRST_FIT:
             return std::make_unique<blocking_pack_strategy>();
 
-        case strategy_type::PARALLEL:
+        case strategy_type::PARALLEL_FIRST_FIT:
             return std::make_unique<parallel_pack_strategy>(thread_count);
 
         default:
@@ -19,15 +19,15 @@ std::unique_ptr<pack_strategy> pack_strategy_factory::create_strategy(
 }
 
 strategy_type pack_strategy_factory::parse_strategy_type(const std::string& str) {
-    if (str == "PARALLEL") return strategy_type::PARALLEL;
-    if (str == "BLOCKING") return strategy_type::BLOCKING;
-    return strategy_type::BLOCKING; // default
+    if (str == "Parallel First Fit") return strategy_type::PARALLEL_FIRST_FIT;
+    if (str == "Blocking First Fit") return strategy_type::BLOCKING_FIRST_FIT;
+    return strategy_type::BLOCKING_FIRST_FIT; // default
 }
 
 std::string pack_strategy_factory::strategy_type_to_string(strategy_type type) {
     switch (type) {
-        case strategy_type::BLOCKING: return "BLOCKING";
-        case strategy_type::PARALLEL: return "PARALLEL";
-        default: return "BLOCKING";
+        case strategy_type::BLOCKING_FIRST_FIT: return "Blocking First Fit";
+        case strategy_type::PARALLEL_FIRST_FIT: return "Parallel First Fit";
+        default: return "Blocking First Fit";
     }
 }

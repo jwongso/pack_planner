@@ -133,6 +133,89 @@
             color: #721c24;
         }
 
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+
+        .processing-steps {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .processing-step {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            padding: 5px 0;
+        }
+
+        .step-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .step-pending {
+            background: #e9ecef;
+            color: #6c757d;
+        }
+
+        .step-active {
+            background: #3498db;
+            color: white;
+        }
+
+        .step-complete {
+            background: #28a745;
+            color: white;
+        }
+
+        .step-error {
+            background: #dc3545;
+            color: white;
+        }
+
         h1 {
             text-align: center;
             color: #2c3e50;
@@ -144,12 +227,93 @@
             border-bottom: 2px solid #ecf0f1;
             padding-bottom: 10px;
         }
+
+        /* Benchmark styles */
+        .benchmark-section {
+            display: none;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .benchmark-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .benchmark-controls .input-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .benchmark-results {
+            overflow-x: auto;
+        }
+
+        .benchmark-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .benchmark-table th, .benchmark-table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .benchmark-table th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+        }
+
+        .benchmark-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .benchmark-table tr:hover {
+            background-color: #f0f7ff;
+        }
+
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        .tab-button.active {
+            background: #3498db;
+            color: white;
+        }
+
+        .chart-container {
+            height: 400px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <h1>🚀 WASM Pack Planner</h1>
 
-    <div class="container">
+    <div class="tab-buttons">
+        <button id="packingTab" class="tab-button active">Packing Tool</button>
+        <button id="benchmarkTab" class="tab-button">Performance Benchmark</button>
+    </div>
+
+    <div class="container" id="packingSection">
         <div class="input-section">
             <h2>Configuration</h2>
 
@@ -208,12 +372,114 @@
             <button id="downloadInputButton" disabled>📥 Download Full Input Data</button>
 
             <div id="status" class="status">Loading WASM module...</div>
+
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <div class="processing-steps" id="processingSteps">
+                <div class="processing-step" id="step1">
+                    <div class="step-icon step-pending" id="step1Icon">1</div>
+                    <span>Validating inputs...</span>
+                </div>
+                <div class="processing-step" id="step2">
+                    <div class="step-icon step-pending" id="step2Icon">2</div>
+                    <span>Parsing item data...</span>
+                </div>
+                <div class="processing-step" id="step3">
+                    <div class="step-icon step-pending" id="step3Icon">3</div>
+                    <span>Initializing WASM planner...</span>
+                </div>
+                <div class="processing-step" id="step4">
+                    <div class="step-icon step-pending" id="step4Icon">4</div>
+                    <span>Sorting items...</span>
+                </div>
+                <div class="processing-step" id="step5">
+                    <div class="step-icon step-pending" id="step5Icon">5</div>
+                    <span>Packing items...</span>
+                </div>
+                <div class="processing-step" id="step6">
+                    <div class="step-icon step-pending" id="step6Icon">6</div>
+                    <span>Generating results...</span>
+                </div>
+            </div>
         </div>
 
         <div class="output-section">
             <h2>Packing Results</h2>
             <div id="results"></div>
             <div id="error"></div>
+        </div>
+    </div>
+    <div class="benchmark-section" id="benchmarkSection">
+        <h2>Performance Benchmark</h2>
+
+        <div class="benchmark-controls">
+            <div class="input-group">
+                <label for="benchSize">Item Count:</label>
+                <select id="benchSize">
+                    <option value="10000">10,000 items</option>
+                    <option value="100000">100,000 items</option>
+                    <option value="1000000">1,000,000 items</option>
+                    <option value="5000000">5,000,000 items</option>
+                    <option value="10000000">10,000,000 items</option>
+                    <option value="20000000">20,000,000 items</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="benchSortOrder">Sort Order:</label>
+                <select id="benchSortOrder">
+                    <option value="0">Natural (Original Order)</option>
+                    <option value="1">Short to Long</option>
+                    <option value="2">Long to Short</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="benchStrategy">Strategy:</label>
+                <select id="benchStrategy">
+                    <option value="0">Blocking (Sequential)</option>
+                    <option value="1">Parallel (Multi-threaded)</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="benchThreads">Thread Count:</label>
+                <input type="number" id="benchThreads" value="4" min="1" max="32">
+            </div>
+        </div>
+
+        <button id="runBenchmarkButton">🔍 Run Benchmark</button>
+        <button id="runFullBenchmarkButton">📊 Run Full Benchmark Suite</button>
+        <button id="exportBenchmarkButton" style="margin-left: 10px;">📊 Export CSV</button>
+
+        <div id="benchmarkStatus" class="status"></div>
+
+        <div class="benchmark-results">
+            <table class="benchmark-table" id="benchmarkTable">
+                <thead>
+                    <tr>
+                        <th>Size</th>
+                        <th>Strategy</th>
+                        <th>Threads</th>
+                        <th>Sort Order</th>
+                        <th>Sort Time (ms)</th>
+                        <th>Pack Time (ms)</th>
+                        <th>Total Time (ms)</th>
+                        <th>Items/sec</th>
+                        <th>Packs</th>
+                        <th>Utilization %</th>
+                    </tr>
+                </thead>
+                <tbody id="benchmarkResults">
+                    <!-- Results will be added here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="chart-container" id="benchmarkChart">
+            <!-- Chart will be rendered here -->
         </div>
     </div>
 
@@ -381,6 +647,44 @@
             generateBatch();
         }
 
+        // Helper functions for progress tracking
+        function updateProgress(percentage) {
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            progressBar.style.display = 'block';
+            progressFill.style.width = `${percentage}%`;
+        }
+
+        function updateStep(stepNumber, status) {
+            const stepIcon = document.getElementById(`step${stepNumber}Icon`);
+            stepIcon.className = `step-icon step-${status}`;
+            if (status === 'complete') {
+                stepIcon.innerHTML = '✓';
+            } else if (status === 'error') {
+                stepIcon.innerHTML = '✗';
+            } else if (status === 'active') {
+                stepIcon.innerHTML = '<div class="spinner" style="width: 12px; height: 12px; border-width: 2px; margin: 0;"></div>';
+            } else {
+                stepIcon.innerHTML = stepNumber;
+            }
+        }
+
+        function showProcessingSteps() {
+            const processingSteps = document.getElementById('processingSteps');
+            processingSteps.style.display = 'block';
+            // Reset all steps to pending
+            for (let i = 1; i <= 6; i++) {
+                updateStep(i, 'pending');
+            }
+        }
+
+        function hideProcessingSteps() {
+            const processingSteps = document.getElementById('processingSteps');
+            const progressBar = document.getElementById('progressBar');
+            processingSteps.style.display = 'none';
+            progressBar.style.display = 'none';
+        }
+
         // Main packing function
         async function runPacking() {
             if (!Module) {
@@ -394,15 +698,22 @@
             const resultsEl = document.getElementById('results');
             const runButton = document.getElementById('runButton');
 
-            // Clear previous results
-            statusEl.textContent = '⚙️ Processing...';
+            // Clear previous results and show progress
+            statusEl.innerHTML = '<div class="spinner"></div>Processing...';
             statusEl.className = 'status loading';
             errorEl.innerHTML = '';
             resultsEl.innerHTML = '';
             runButton.disabled = true;
 
+            showProcessingSteps();
+            updateProgress(0);
+
             try {
-                // Get input values
+                // Step 1: Validate inputs
+                updateStep(1, 'active');
+                statusEl.innerHTML = '<div class="spinner"></div>Validating inputs...';
+                await new Promise(resolve => setTimeout(resolve, 100)); // Allow UI update
+
                 const maxItems = parseInt(document.getElementById('maxItems').value);
                 const maxWeight = parseFloat(document.getElementById('maxWeight').value);
                 const sortOrder = parseInt(document.getElementById('sortOrder').value);
@@ -416,7 +727,14 @@
                 if (threadCount <= 0) throw new Error('Thread count must be positive');
                 if (!itemsText) throw new Error('Items input is empty');
 
-                // Parse items - use full data if available, otherwise parse from textarea
+                updateStep(1, 'complete');
+                updateProgress(15);
+
+                // Step 2: Parse item data
+                updateStep(2, 'active');
+                statusEl.innerHTML = '<div class="spinner"></div>Parsing item data...';
+                await new Promise(resolve => setTimeout(resolve, 100));
+
                 let items;
                 if (fullInputData && fullInputData.length > 0) {
                     items = fullInputData;
@@ -438,20 +756,50 @@
                     }
                 }
 
-                // Create planner instance
+                updateStep(2, 'complete');
+                updateProgress(30);
+
+                // Step 3: Initialize WASM planner
+                updateStep(3, 'active');
+                statusEl.innerHTML = '<div class="spinner"></div>Initializing WASM planner...';
+                await new Promise(resolve => setTimeout(resolve, 100));
+
                 const planner = new Module.PackPlanner();
+                updateStep(3, 'complete');
+                updateProgress(45);
 
                 const startTime = performance.now();
 
-                // Get planning stats first
+                // Step 4: Sorting items
+                updateStep(4, 'active');
+                statusEl.innerHTML = '<div class="spinner"></div>Sorting items...';
+                await new Promise(resolve => setTimeout(resolve, 50));
+
+                // Get planning stats first (this includes sorting)
                 const stats = planner.getPlanningStats(
                     items, maxItems, maxWeight, sortOrder, strategyType, threadCount
                 );
+
+                updateStep(4, 'complete');
+                updateProgress(65);
+
+                // Step 5: Packing items
+                updateStep(5, 'active');
+                statusEl.innerHTML = '<div class="spinner"></div>Packing items...';
+                await new Promise(resolve => setTimeout(resolve, 50));
 
                 // Call WASM function to get the packed results
                 const packedResults = planner.packItems(
                     items, maxItems, maxWeight, sortOrder, strategyType, threadCount
                 );
+
+                updateStep(5, 'complete');
+                updateProgress(85);
+
+                // Step 6: Generating results
+                updateStep(6, 'active');
+                statusEl.innerHTML = '<div class="spinner"></div>Generating results...';
+                await new Promise(resolve => setTimeout(resolve, 100));
 
                 const endTime = performance.now();
                 const processingTime = (endTime - startTime).toFixed(2);
@@ -531,25 +879,212 @@
                     statusEl.className = 'status error';
                 }
 
+                updateStep(6, 'complete');
+                updateProgress(100);
+
                 // Clean up WASM objects
                 planner.delete();
 
             } catch (e) {
+                // Mark current step as error
+                for (let i = 1; i <= 6; i++) {
+                    const stepIcon = document.getElementById(`step${i}Icon`);
+                    if (stepIcon.className.includes('step-active')) {
+                        updateStep(i, 'error');
+                        break;
+                    }
+                }
+
                 errorEl.innerHTML = `<div class="error">❌ <strong>Error:</strong> ${e.message}</div>`;
                 statusEl.textContent = '❌ Processing failed';
                 statusEl.className = 'status error';
                 console.error("Packing error:", e);
             } finally {
                 runButton.disabled = false;
+                // Hide progress indicators after a delay
+                setTimeout(() => {
+                    hideProcessingSteps();
+                }, 3000);
             }
         }
 
-        // Allow Enter key in textarea to trigger packing
-        document.getElementById('itemsInput').addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'Enter') {
-                runPacking();
+        // Add benchmark functionality
+        let benchmarkResults = [];
+
+        function switchTab(tabName) {
+            if (tabName === 'packing') {
+                document.getElementById('packingSection').style.display = 'flex';
+                document.getElementById('benchmarkSection').style.display = 'none';
+                document.getElementById('packingTab').classList.add('active');
+                document.getElementById('benchmarkTab').classList.remove('active');
+            } else {
+                document.getElementById('packingSection').style.display = 'none';
+                document.getElementById('benchmarkSection').style.display = 'block';
+                document.getElementById('packingTab').classList.remove('active');
+                document.getElementById('benchmarkTab').classList.add('active');
             }
-        });
+        }
+
+        function exportBenchmarkResults() {
+            if (benchmarkResults.length === 0) {
+                alert("No results to export!");
+                return;
+            }
+
+            let csv = "Size,Strategy,Threads,Sort Order,Sort Time (ms),Pack Time (ms),Total Time (ms),Items/sec,Packs,Utilization %\n";
+            benchmarkResults.forEach(res => {
+                csv += `${res.size},${res.strategy},${res.numThreads || "-"},${res.order},`;
+                csv += `${res.sortingTime.toFixed(3)},${res.packingTime.toFixed(3)},${res.totalTime.toFixed(3)},`;
+                csv += `${res.itemsPerSecond},${res.totalPacks},${res.utilizationPercent.toFixed(1)}\n`;
+            });
+
+            // Trigger download
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pack_benchmark_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function runSingleBenchmark() {
+            if (!Module) {
+                document.getElementById('benchmarkStatus').innerHTML =
+                    '<div class="error">❌ WASM module not loaded</div>';
+                return;
+            }
+
+            const benchStatusEl = document.getElementById('benchmarkStatus');
+            const runBenchButton = document.getElementById('runBenchmarkButton');
+            const runFullBenchButton = document.getElementById('runFullBenchmarkButton');
+
+            benchStatusEl.innerHTML = '<div class="spinner"></div>Running benchmark...';
+            benchStatusEl.className = 'status loading';
+            runBenchButton.disabled = true;
+            runFullBenchButton.disabled = true;
+
+            try {
+                const size = parseInt(document.getElementById('benchSize').value);
+                const sortOrder = parseInt(document.getElementById('benchSortOrder').value);
+                const strategy = parseInt(document.getElementById('benchStrategy').value);
+                const threads = parseInt(document.getElementById('benchThreads').value);
+                threads.disabled = e.target.value === "0";
+
+                const planner = new Module.PackPlanner();
+
+                const startTime = performance.now();
+                const result = planner.runBenchmark(size, sortOrder, strategy, threads);
+                const jsTime = performance.now() - startTime;
+
+                // Add result to table
+                addBenchmarkResult(result);
+
+                benchStatusEl.textContent = `✅ Benchmark completed in ${jsTime.toFixed(2)}ms`;
+                benchStatusEl.className = 'status success';
+
+                // Clean up WASM objects
+                planner.delete();
+
+            } catch (e) {
+                benchStatusEl.innerHTML = `<div class="error">❌ <strong>Error:</strong> ${e.message}</div>`;
+                benchStatusEl.className = 'status error';
+                console.error("Benchmark error:", e);
+            } finally {
+                runBenchButton.disabled = false;
+                runFullBenchButton.disabled = false;
+            }
+        }
+
+        async function runFullBenchmark() {
+            if (!Module) {
+                document.getElementById('benchmarkStatus').innerHTML =
+                    '<div class="error">❌ WASM module not loaded</div>';
+                return;
+            }
+
+            const benchStatusEl = document.getElementById('benchmarkStatus');
+            const runBenchButton = document.getElementById('runBenchmarkButton');
+            const runFullBenchButton = document.getElementById('runFullBenchmarkButton');
+
+            benchStatusEl.innerHTML = '<div class="spinner"></div>Running full benchmark suite...';
+            benchStatusEl.className = 'status loading';
+            runBenchButton.disabled = true;
+            runFullBenchButton.disabled = true;
+
+            try {
+                // Clear previous results
+                benchmarkResults = [];
+                document.getElementById('benchmarkResults').innerHTML = '';
+
+                const sizes = [10000, 100000, 1000000, 5000000, 10000000, 20000000];
+                const sortOrders = [0, 1, 2]; // Natural, Short-to-Long, Long-to-Short
+                const strategies = [0, 1]; // Blocking, Parallel
+
+                const planner = new Module.PackPlanner();
+                let totalTests = sizes.length * sortOrders.length * strategies.length;
+                let completedTests = 0;
+
+                for (const size of sizes) {
+                    for (const sortOrder of sortOrders) {
+                        for (const strategy of strategies) {
+                            // Skip thread variations for blocking strategy
+                            const threads = strategy === 0 ? 1 : 4;
+
+                            benchStatusEl.innerHTML = `<div class="spinner"></div>Running benchmark ${completedTests + 1}/${totalTests}: ${size.toLocaleString()} items, ${strategy === 0 ? 'Blocking' : 'Parallel'}, ${sortOrder === 0 ? 'Natural' : sortOrder === 1 ? 'Short-to-Long' : 'Long-to-Short'}`;
+
+                            // Add a small delay to allow UI updates
+                            await new Promise(resolve => setTimeout(resolve, 50));
+
+                            const result = planner.runBenchmark(size, sortOrder, strategy, threads);
+                            addBenchmarkResult(result);
+
+                            completedTests++;
+                        }
+                    }
+                }
+
+                benchStatusEl.textContent = `✅ Full benchmark suite completed (${totalTests} tests)`;
+                benchStatusEl.className = 'status success';
+
+                // Clean up WASM objects
+                planner.delete();
+
+            } catch (e) {
+                benchStatusEl.innerHTML = `<div class="error">❌ <strong>Error:</strong> ${e.message}</div>`;
+                benchStatusEl.className = 'status error';
+                console.error("Benchmark error:", e);
+            } finally {
+                runBenchButton.disabled = false;
+                runFullBenchButton.disabled = false;
+            }
+        }
+
+        function addBenchmarkResult(result) {
+            // Add to results array
+            benchmarkResults.push(result);
+
+            // Add to table
+            const tbody = document.getElementById('benchmarkResults');
+            const row = document.createElement('tr');
+
+            row.innerHTML = `
+                <td>${result.size.toLocaleString()}</td>
+                <td>${result.strategy}</td>
+                <td>${result.strategy === 'Parallel' ? result.numThreads : '-'}</td>
+                <td>${result.order}</td>
+                <td>${result.sortingTime.toFixed(3)}</td>
+                <td>${result.packingTime.toFixed(3)}</td>
+                <td>${result.totalTime.toFixed(3)}</td>
+                <td>${result.itemsPerSecond.toLocaleString()}</td>
+                <td>${result.totalPacks.toLocaleString()}</td>
+                <td>${result.utilizationPercent.toFixed(1)}%</td>
+            `;
+
+            tbody.appendChild(row);
+        }
 
         // Initialize when page loads
         window.addEventListener('load', () => {
@@ -559,6 +1094,16 @@
             document.getElementById('runButton').addEventListener('click', runPacking);
             document.getElementById('generateButton').addEventListener('click', generateTestData);
             document.getElementById('downloadInputButton').addEventListener('click', downloadInputData);
+
+            // Benchmark tab event listeners
+            document.getElementById('packingTab').addEventListener('click', () => switchTab('packing'));
+            document.getElementById('benchmarkTab').addEventListener('click', () => switchTab('benchmark'));
+            document.getElementById('runBenchmarkButton').addEventListener('click', runSingleBenchmark);
+            document.getElementById('runFullBenchmarkButton').addEventListener('click', runFullBenchmark);
+            document.getElementById('exportBenchmarkButton').addEventListener('click', exportBenchmarkResults);
+
+            // Initialize with packing tab active
+            switchTab('packing');
         });
     </script>
 </body>

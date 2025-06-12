@@ -7,8 +7,8 @@ const std::vector<int> benchmark::BENCHMARK_SIZES = {100000, 1000000, 5000000, 1
 const std::vector<sort_order> benchmark::SORT_ORDERS = {sort_order::NATURAL,
                                                         sort_order::LONG_TO_SHORT,
                                                         sort_order::SHORT_TO_LONG};
-const std::vector<strategy_type> benchmark::PACKING_STRATEGIES = { strategy_type::BLOCKING,
-                                                                  strategy_type::PARALLEL };
+const std::vector<strategy_type> benchmark::PACKING_STRATEGIES = { strategy_type::BLOCKING_FIRST_FIT,
+                                                                  strategy_type::PARALLEL_FIRST_FIT };
 const std::vector<unsigned int> benchmark::THREAD_COUNTS = {0}; // 0 means use hardware concurrency
 
 benchmark::benchmark() {
@@ -25,14 +25,14 @@ void benchmark::run_benchmark() {
     for (strategy_type strategy : PACKING_STRATEGIES) {
         for (unsigned int threads : THREAD_COUNTS) {
             // Skip thread variations for blocking strategy
-            if (strategy == strategy_type::BLOCKING && threads > 0) {
+            if (strategy == strategy_type::BLOCKING_FIRST_FIT && threads > 0) {
                 continue;
             }
 
             for (sort_order order : SORT_ORDERS) {
                 std::cout << "Strategy: " <<
                     pack_strategy_factory::strategy_type_to_string(strategy);
-                if (strategy == strategy_type::PARALLEL) {
+                if (strategy == strategy_type::PARALLEL_FIRST_FIT) {
                     std::cout <<
                         " (Threads: " << (threads == 0 ? "Auto" : std::to_string(threads)) << ")";
                 }
@@ -129,7 +129,7 @@ benchmark_result benchmark::run_single_benchmark(int size, sort_order order,
     // Calculate items per second
     if (result.total_time > 0) {
         result.items_per_second =
-            static_cast<int>((plan_result.total_items * 1000.0) / result.total_time);
+            static_cast<long long>((plan_result.total_items * 1000.0) / result.total_time);
     } else {
         result.items_per_second = 0;
     }

@@ -12,7 +12,7 @@ public record BenchmarkResult
     public required double SortingTime { get; init; }
     public required double PackingTime { get; init; }
     public required double TotalTime { get; init; }
-    public required int ItemsPerSecond { get; init; }
+    public required long ItemsPerSecond { get; init; }
     public required int TotalPacks { get; init; }
     public required double UtilizationPercent { get; init; }
 }
@@ -161,10 +161,10 @@ public class Benchmark
         var planResult = _planner.PlanPacks(config, items);
 
         // Calculate items per second
-        int itemsPerSecond = 0;
+        long itemsPerSecond = 0;
         if (planResult.TotalTime > 0)
         {
-            itemsPerSecond = (int)((planResult.TotalItems * 1000.0) / planResult.TotalTime);
+            itemsPerSecond = (long)((planResult.TotalItems * 1000.0) / planResult.TotalTime);
         }
 
         return new BenchmarkResult

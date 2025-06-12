@@ -25,7 +25,7 @@ public:
         std::vector<pack> packs;
         // Pre-allocate based on empirical ratio to avoid reallocations
         // SAFETY: Limit initial allocation to prevent OOM with extreme values
-        const size_t max_safe_reserve = 10000;
+        const size_t max_safe_reserve = std::min<size_t>(100000, items.size() / 10 + 1000);
         packs.reserve(std::min(max_safe_reserve,
                     std::max<size_t>(64, static_cast<size_t>(items.size() * 0.00222) + 16)));
         int pack_number = 1;

@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pack Planner Interactive Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px 0;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #e8f5e8;
+            color: #2d5a2d;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status-indicator.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-indicator.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .control-panel {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chart-wrapper {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+
+        .control-group select,
+        .control-group input {
+            padding: 10px 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .control-group select:focus,
+        .control-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #495057;
+            border: 2px solid #e1e8ed;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #6c757d;
+            font-weight: 500;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .results-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+            position: sticky;
+            top: 0;
+        }
+
+        .results-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid;
+        }
+
+        .alert-info {
+            background: #e7f3ff;
+            border-color: #0066cc;
+            color: #004499;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .chart-control-btn {
+            padding: 6px 12px;
+            border: 1px solid #e1e8ed;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .chart-control-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .chart-control-btn:hover {
+            border-color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .chart-container {
+                height: 400px;
+            }
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .loading-content {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="logo">
+                📦 Pack Planner Dashboard
+            </div>
+            <div id="statusIndicator" class="status-indicator loading">
+                <div class="spinner"></div>
+                Loading WASM Module...
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="control-panel">
+            <h2 style="margin-bottom: 20px; color: #2c3e50;">🎛️ Benchmark Controls</h2>
+            
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label for="datasetSize">Dataset Size</label>
+                    <select id="datasetSize">
+                        <option value="10000">10K items</option>
+                        <option value="100000" selected>100K items</option>
+                        <option value="1000000">1M items</option>
+                        <option value="5000000">5M items</option>
+                        <option value="10000000">10M items</option>
+                        <option value="20000000">20M items</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="sortOrder">Sort Order</label>
+                    <select id="sortOrder">
+                        <option value="0">Natural Order</option>
+                        <option value="1">Short to Long</option>
+                        <option value="2">Long to Short</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="strategy">Strategy</label>
+                    <select id="strategy">
+                        <option value="0">Blocking (Sequential)</option>
+                        <option value="1">Parallel (Multi-threaded)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="threadCount">Thread Count</label>
+                    <input type="number" id="threadCount" value="4" min="1" max="32">
+                </div>
+
+                <div class="control-group">
+                    <label for="maxItems">Max Items/Pack</label>
+                    <input type="number" id="maxItems" value="100" min="1" max="1000">
+                </div>
+
+                <div class="control-group">
+                    <label for="maxWeight">Max Weight/Pack (kg)</label>
+                    <input type="number" id="maxWeight" value="200" min="0.1" step="0.1">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button id="runSingleBtn" class="btn btn-primary">
+                    🚀 Run Single Benchmark
+                </button>
+                <button id="runSuiteBtn" class="btn btn-success">
+                    📊 Run Full Suite
+                </button>
+                <button id="clearResultsBtn" class="btn btn-secondary">
+                    🗑️ Clear Results
+                </button>
+                <button id="exportBtn" class="btn btn-secondary">
+                    📥 Export CSV
+                </button>
+            </div>
+
+            <div id="progressSection" style="display: none; margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <span id="progressText">Running benchmarks...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div style="width: 100%; height: 8px; background: #e1e8ed; border-radius: 4px; overflow: hidden;">
+                    <div id="progressBar" style="height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); width: 0%; transition: width 0.3s ease;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="statsGrid" class="stats-grid" style="display: none;">
+            <div class="stat-card">
+                <div id="totalTests" class="stat-value">0</div>
+                <div class="stat-label">Total Tests</div>
+            </div>
+            <div class="stat-card">
+                <div id="avgTime" class="stat-value">0ms</div>
+                <div class="stat-label">Avg Total Time</div>
+            </div>
+            <div class="stat-card">
+                <div id="avgThroughput" class="stat-value">0</div>
+                <div class="stat-label">Avg Items/sec</div>
+            </div>
+            <div class="stat-card">
+                <div id="avgUtilization" class="stat-value">0%</div>
+                <div class="stat-label">Avg Utilization</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="chart-container">
+                <div class="chart-title">📈 Performance Trends</div>
+                <div class="chart-controls">
+                    <button class="chart-control-btn active" data-metric="totalTime">Total Time</button>
+                    <button class="chart-control-btn" data-metric="itemsPerSecond">Items/sec</button>
+                    <button class="chart-control-btn" data-metric="utilizationPercent">Utilization</button>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">⚡ Strategy Comparison</div>
+                <div class="chart-controls">
+                    <button class="chart-control-btn active" data-comparison="time">Time Comparison</button>
+                    <button class="chart-control-btn" data-comparison="throughput">Throughput</button>
+                    <button class="chart-control-btn" data-comparison="efficiency">Efficiency</button>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="comparisonChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">🍩 Time Breakdown</div>
+                <div class="chart-wrapper">
+                    <canvas id="timeBreakdownChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-title">📊 Utilization Analysis</div>
+                <div class="chart-wrapper">
+                    <canvas id="utilizationChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container" style="grid-column: 1 / -1; height: auto;">
+            <div class="chart-title">📋 Detailed Results</div>
+            <div style="overflow-x: auto;">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Size</th>
+                            <th>Strategy</th>
+                            <th>Threads</th>
+                            <th>Sort Order</th>
+                            <th>Sort Time (ms)</th>
+                            <th>Pack Time (ms)</th>
+                            <th>Total Time (ms)</th>
+                            <th>Items/sec</th>
+                            <th>Packs</th>
+                            <th>Utilization %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody">
+                        <tr>
+                            <td colspan="10" style="text-align: center; color: #6c757d; padding: 40px;">
+                                No benchmark results yet. Run a benchmark to see data.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h3 style="margin-bottom: 10px;">Running Benchmark</h3>
+            <p id="loadingText">Initializing...</p>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let Module = null;
+        let benchmarkResults = [];
+        let charts = {};
+
+        // Chart color schemes
+        const colors = {
+            primary: '#667eea',
+            secondary: '#764ba2',
+            success: '#28a745',
+            warning: '#ffc107',
+            danger: '#dc3545',
+            info: '#17a2b8',
+            light: '#f8f9fa',
+            dark: '#343a40'
+        };
+
+        const gradients = {
+            blue: ['#667eea', '#764ba2'],
+            green: ['#28a745', '#20c997'],
+            orange: ['#fd7e14', '#ffc107'],
+            red: ['#dc3545', '#e83e8c'],
+            purple: ['#6f42c1', '#e83e8c']
+        };
+
+        // Initialize WASM module
+        async function initializeWASM() {
+            const statusEl = document.getElementById('statusIndicator');
+            
+            try {
+                statusEl.innerHTML = '<div class="spinner"></div>Loading WASM Module...';
+                statusEl.className = 'status-indicator loading';
+
+                // Try to load the WASM module
+                if (typeof createModule !== 'undefined') {
+                    Module = await createModule();
+                } else {
+                    const wasmModule = await import('./pack_planner_wasm.js');
+                    Module = await wasmModule.default();
+                }
+
+                statusEl.innerHTML = '✅ WASM Ready';
+                statusEl.className = 'status-indicator';
+                
+                // Enable controls
+                enableControls();
+                
+            } catch (error) {
+                statusEl.innerHTML = '❌ WASM Failed';
+                statusEl.className = 'status-indicator error';
+                
+                showAlert('error', `Failed to load WASM module: ${error.message}`);
+                console.error('WASM initialization error:', error);
+            }
+        }
+
+        function enableControls() {
+            document.getElementById('runSingleBtn').disabled = false;
+            document.getElementById('runSuiteBtn').disabled = false;
+        }
+
+        function showAlert(type, message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = message;
+            
+            const container = document.querySelector('.container');
+            container.insertBefore(alertDiv, container.firstChild);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+
+        // Initialize charts
+        function initializeCharts() {
+            // Performance trends chart
+            const perfCtx = document.getElementById('performanceChart').getContext('2d');
+            charts.performance = new Chart(perfCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Strategy comparison chart
+            const compCtx = document.getElementById('comparisonChart').getContext('2d');
+            charts.comparison = new Chart(compCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Time breakdown chart
+            const timeCtx = document.getElementById('timeBreakdownChart').getContext('2d');
+            charts.timeBreakdown = new Chart(timeCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Sorting Time', 'Packing Time'],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [colors.primary, colors.secondary],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        }
+                    }
+                }
+            });
+
+            // Utilization analysis chart
+            const utilCtx = document.getElementById('utilizationChart').getContext('2d');
+            charts.utilization = new Chart(utilCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Dataset Size'
+                            },
+                            type: 'logarithmic'
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Utilization %'
+                            },
+                            min: 90,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+
+        // Run single benchmark
+        async function runSingleBenchmark() {
+            if (!Module) {
+                showAlert('warning', 'WASM module not loaded');
+                return;
+            }
+
+            const size = parseInt(document.getElementById('datasetSize').value);
+            const sortOrder = parseInt(document.getElementById('sortOrder').value);
+            const strategy = parseInt(document.getElementById('strategy').value);
+            const threads = parseInt(document.getElementById('threadCount').value);
+
+            showLoadingOverlay('Running single benchmark...');
+
+            try {
+                const planner = new Module.PackPlanner();
+                const result = planner.runBenchmark(size, sortOrder, strategy, threads);
+                
+                addBenchmarkResult(result);
+                updateCharts();
+                updateStats();
+                
+                planner.delete();
+                
+                showAlert('success', 'Benchmark completed successfully!');
+                
+            } catch (error) {
+                showAlert('error', `Benchmark failed: ${error.message}`);
+                console.error('Benchmark error:', error);
+            } finally {
+                hideLoadingOverlay();
+            }
+        }
+
+        // Run full benchmark suite
+        async function runFullBenchmarkSuite() {
+            if (!Module) {
+                showAlert('warning', 'WASM module not loaded');
+                return;
+            }
+
+            const sizes = [10000, 100000, 1000000, 5000000, 10000000, 20000000];
+            const sortOrders = [0, 1, 2]; // Natural, Short-to-Long, Long-to-Short
+            const strategies = [0, 1]; // Blocking, Parallel
+
+            const totalTests = sizes.length * sortOrders.length * strategies.length;
+            let completedTests = 0;
+
+            showProgress();
+            showLoadingOverlay('Initializing benchmark suite...');
+
+            try {
+                const planner = new Module.PackPlanner();
+
+                for (const size of sizes) {
+                    for (const sortOrder of sortOrders) {
+                        for (const strategy of strategies) {
+                            const threads = strategy === 0 ? 1 : 4;
+                            
+                            const sortOrderName = ['Natural', 'Short-to-Long', 'Long-to-Short'][sortOrder];
+                            const strategyName = strategy === 0 ? 'Blocking' : 'Parallel';
+                            
+                            updateLoadingText(`Testing ${size.toLocaleString()} items, ${strategyName}, ${sortOrderName}`);
+                            updateProgress(completedTests, totalTests);
+
+                            // Add small delay to allow UI updates
+                            await new Promise(resolve => setTimeout(resolve, 50));
+
+                            const result = planner.runBenchmark(size, sortOrder, strategy, threads);
+                            addBenchmarkResult(result);
+
+                            completedTests++;
+                        }
+                    }
+                }
+
+                planner.delete();
+                
+                updateCharts();
+                updateStats();
+                
+                showAlert('success', `Full benchmark suite completed! (${totalTests} tests)`);
+                
+            } catch (error) {
+                showAlert('error', `Benchmark suite failed: ${error.message}`);
+                console.error('Benchmark suite error:', error);
+            } finally {
+                hideProgress();
+                hideLoadingOverlay();
+            }
+        }
+
+        // Add benchmark result
+        function addBenchmarkResult(result) {
+            benchmarkResults.push(result);
+            
+            // Add to table
+            const tbody = document.getElementById('resultsTableBody');
+            
+            // Clear "no results" message if this is the first result
+            if (benchmarkResults.length === 1) {
+                tbody.innerHTML = '';
+            }
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${result.size.toLocaleString()}</td>
+                <td>${result.strategy}</td>
+                <td>${result.strategy.includes('Parallel') ? result.numThreads : '-'}</td>
+                <td>${result.order}</td>
+                <td>${result.sortingTime.toFixed(3)}</td>
+                <td>${result.packingTime.toFixed(3)}</td>
+                <td>${result.totalTime.toFixed(3)}</td>
+                <td>${result.itemsPerSecond.toLocaleString()}</td>
+                <td>${result.totalPacks.toLocaleString()}</td>
+                <td>${result.utilizationPercent.toFixed(1)}%</td>
+            `;
+            
+            tbody.appendChild(row);
+            
+            // Show stats grid
+            document.getElementById('statsGrid').style.display = 'grid';
+        }
+
+        // Update charts
+        function updateCharts() {
+            updatePerformanceChart();
+            updateComparisonChart();
+            updateTimeBreakdownChart();
+            updateUtilizationChart();
+        }
+
+        function updatePerformanceChart() {
+            const metric = document.querySelector('.chart-control-btn[data-metric].active')?.dataset.metric || 'totalTime';
+            
+            // Group results by strategy and sort order
+            const datasets = {};
+            
+            benchmarkResults.forEach(result => {
+                const key = `${result.strategy} (${result.order})`;
+                if (!datasets[key]) {
+                    datasets[key] = {
+                        label: key,
+                        data: [],
+                        borderColor: getColorForStrategy(result.strategy),
+                        backgroundColor: getColorForStrategy(result.strategy) + '20',
+                        tension: 0.4
+                    };
+                }
+                
+                datasets[key].data.push({
+                    x: result.size,
+                    y: result[metric]
+                });
+            });
+
+            // Sort data points by x value
+            Object.values(datasets).forEach(dataset => {
+                dataset.data.sort((a, b) => a.x - b.x);
+            });
+
+            charts.performance.data.datasets = Object.values(datasets);
+            charts.performance.options.scales.y.title = {
+                display: true,
+                text: getMetricLabel(metric)
+            };
+            charts.performance.update();
+        }
+
+        function updateComparisonChart() {
+            const comparison = document.querySelector('.chart-control-btn[data-comparison].active')?.dataset.comparison || 'time';
+            
+            // Group results by dataset size
+            const sizeGroups = {};
+            benchmarkResults.forEach(result => {
+                if (!sizeGroups[result.size]) {
+                    sizeGroups[result.size] = {};
+                }
+                const key = `${result.strategy} (${result.order})`;
+                sizeGroups[result.size][key] = result;
+            });
+
+            const labels = Object.keys(sizeGroups).map(size => `${parseInt(size).toLocaleString()}`);
+            const datasets = {};
+
+            // Create datasets for each strategy/order combination
+            Object.values(sizeGroups).forEach((sizeGroup, index) => {
+                Object.entries(sizeGroup).forEach(([key, result]) => {
+                    if (!datasets[key]) {
+                        datasets[key] = {
+                            label: key,
+                            data: new Array(labels.length).fill(null),
+                            backgroundColor: getColorForStrategy(result.strategy),
+                            borderColor: getColorForStrategy(result.strategy),
+                            borderWidth: 2
+                        };
+                    }
+                    
+                    let value;
+                    switch (comparison) {
+                        case 'throughput':
+                            value = result.itemsPerSecond;
+                            break;
+                        case 'efficiency':
+                            value = result.utilizationPercent;
+                            break;
+                        default:
+                            value = result.totalTime;
+                    }
+                    
+                    datasets[key].data[index] = value;
+                });
+            });
+
+            charts.comparison.data.labels = labels;
+            charts.comparison.data.datasets = Object.values(datasets);
+            charts.comparison.options.scales.y.title = {
+                display: true,
+                text: getComparisonLabel(comparison)
+            };
+            charts.comparison.update();
+        }
+
+        function updateTimeBreakdownChart() {
+            if (benchmarkResults.length === 0) return;
+            
+            // Use the most recent result for breakdown
+            const latestResult = benchmarkResults[benchmarkResults.length - 1];
+            
+            charts.timeBreakdown.data.datasets[0].data = [
+                latestResult.sortingTime,
+                latestResult.packingTime
+            ];
+            charts.timeBreakdown.update();
+        }
+
+        function updateUtilizationChart() {
+            // Group by strategy
+            const datasets = {};
+            
+            benchmarkResults.forEach(result => {
+                const key = result.strategy;
+                if (!datasets[key]) {
+                    datasets[key] = {
+                        label: key,
+                        data: [],
+                        backgroundColor: getColorForStrategy(result.strategy),
+                        borderColor: getColorForStrategy(result.strategy),
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    };
+                }
+                
+                datasets[key].data.push({
+                    x: result.size,
+                    y: result.utilizationPercent
+                });
+            });
+
+            charts.utilization.data.datasets = Object.values(datasets);
+            charts.utilization.update();
+        }
+
+        // Helper functions
+        function getColorForStrategy(strategy) {
+            if (strategy.includes('Blocking')) return colors.primary;
+            if (strategy.includes('Parallel')) return colors.success;
+            return colors.secondary;
+        }
+
+        function getMetricLabel(metric) {
+            switch (metric) {
+                case 'totalTime': return 'Total Time (ms)';
+                case 'itemsPerSecond': return 'Items per Second';
+                case 'utilizationPercent': return 'Utilization (%)';
+                default: return metric;
+            }
+        }
+
+        function getComparisonLabel(comparison) {
+            switch (comparison) {
+                case 'time': return 'Total Time (ms)';
+                case 'throughput': return 'Items per Second';
+                case 'efficiency': return 'Utilization (%)';
+                default: return comparison;
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            if (benchmarkResults.length === 0) return;
+            
+            const totalTests = benchmarkResults.length;
+            const avgTime = benchmarkResults.reduce((sum, r) => sum + r.totalTime, 0) / totalTests;
+            const avgThroughput = benchmarkResults.reduce((sum, r) => sum + r.itemsPerSecond, 0) / totalTests;
+            const avgUtilization = benchmarkResults.reduce((sum, r) => sum + r.utilizationPercent, 0) / totalTests;
+            
+            document.getElementById('totalTests').textContent = totalTests;
+            document.getElementById('avgTime').textContent = `${avgTime.toFixed(1)}ms`;
+            document.getElementById('avgThroughput').textContent = Math.round(avgThroughput).toLocaleString();
+            document.getElementById('avgUtilization').textContent = `${avgUtilization.toFixed(1)}%`;
+        }
+
+        // Progress and loading functions
+        function showProgress() {
+            document.getElementById('progressSection').style.display = 'block';
+        }
+
+        function hideProgress() {
+            document.getElementById('progressSection').style.display = 'none';
+        }
+
+        function updateProgress(completed, total) {
+            const percent = Math.round((completed / total) * 100);
+            document.getElementById('progressBar').style.width = `${percent}%`;
+            document.getElementById('progressPercent').textContent = `${percent}%`;
+        }
+
+        function showLoadingOverlay(text) {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoadingOverlay() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        function updateLoadingText(text) {
+            document.getElementById('loadingText').textContent = text;
+        }
+
+        // Clear results
+        function clearResults() {
+            benchmarkResults = [];
+            document.getElementById('resultsTableBody').innerHTML = `
+                <tr>
+                    <td colspan="10" style="text-align: center; color: #6c757d; padding: 40px;">
+                        No benchmark results yet. Run a benchmark to see data.
+                    </td>
+                </tr>
+            `;
+            document.getElementById('statsGrid').style.display = 'none';
+            
+            // Clear charts
+            Object.values(charts).forEach(chart => {
+                chart.data.datasets = [];
+                chart.update();
+            });
+        }
+
+        // Export to CSV
+        function exportToCSV() {
+            if (benchmarkResults.length === 0) {
+                showAlert('warning', 'No results to export');
+                return;
+            }
+
+            let csv = 'Size,Strategy,Threads,Sort Order,Sort Time (ms),Pack Time (ms),Total Time (ms),Items/sec,Packs,Utilization %\n';
+            
+            benchmarkResults.forEach(result => {
+                csv += `${result.size},${result.strategy},${result.strategy.includes('Parallel') ? result.numThreads : '-'},${result.order},`;
+                csv += `${result.sortingTime.toFixed(3)},${result.packingTime.toFixed(3)},${result.totalTime.toFixed(3)},`;
+                csv += `${result.itemsPerSecond},${result.totalPacks},${result.utilizationPercent.toFixed(1)}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pack_planner_benchmark_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Event listeners
+        function setupEventListeners() {
+            // Button events
+            document.getElementById('runSingleBtn').addEventListener('click', runSingleBenchmark);
+            document.getElementById('runSuiteBtn').addEventListener('click', runFullBenchmarkSuite);
+            document.getElementById('clearResultsBtn').addEventListener('click', clearResults);
+            document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+
+            // Chart control events
+            document.querySelectorAll('.chart-control-btn[data-metric]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.chart-control-btn[data-metric]').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    updatePerformanceChart();
+                });
+            });
+
+            document.querySelectorAll('.chart-control-btn[data-comparison]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.chart-control-btn[data-comparison]').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    updateComparisonChart();
+                });
+            });
+
+            // Strategy change event
+            document.getElementById('strategy').addEventListener('change', (e) => {
+                const threadInput = document.getElementById('threadCount');
+                threadInput.disabled = e.target.value === '0';
+                if (e.target.value === '0') {
+                    threadInput.value = '1';
+                }
+            });
+        }
+
+        // Initialize everything when page loads
+        window.addEventListener('load', async () => {
+            // Disable buttons initially
+            document.getElementById('runSingleBtn').disabled = true;
+            document.getElementById('runSuiteBtn').disabled = true;
+
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Initialize charts
+            initializeCharts();
+            
+            // Initialize WASM
+            await initializeWASM();
+        });
+    </script>
+</body>
+</html>

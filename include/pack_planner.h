@@ -17,7 +17,7 @@ struct pack_planner_config {
     sort_order order = sort_order::NATURAL;
     int max_items_per_pack = 100;
     double max_weight_per_pack = 200.0;
-    strategy_type type = strategy_type::BLOCKING;
+    strategy_type type = strategy_type::BLOCKING_FIRST_FIT;
     int thread_count = 4;
 
     // C++20: default all comparisons
@@ -46,7 +46,7 @@ public:
      * @brief Construct a new Pack Planner object
      */
     pack_planner() noexcept
-        : m_strategy(pack_strategy_factory::create_strategy(strategy_type::BLOCKING)) {}
+        : m_strategy(pack_strategy_factory::create_strategy(strategy_type::BLOCKING_FIRST_FIT)) {}
 
     /**
      * @brief Plan packs with given configuration and items

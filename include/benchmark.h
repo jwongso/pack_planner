@@ -13,7 +13,7 @@ struct benchmark_result {
     double sorting_time;
     double packing_time;
     double total_time;
-    int items_per_second;
+    long long items_per_second;  // Changed from int to long long to prevent overflow
     int total_packs;
     double utilization_percent;
 };

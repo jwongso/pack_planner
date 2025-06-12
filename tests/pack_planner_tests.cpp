@@ -54,7 +54,7 @@ protected:
         config.order = sort_order::NATURAL;
         config.max_items_per_pack = 10;
         config.max_weight_per_pack = 25.0;
-        config.type = strategy_type::PARALLEL;
+        config.type = strategy_type::PARALLEL_FIRST_FIT;
         config.thread_count = 4;
     }
 
@@ -375,7 +375,7 @@ TEST_F(ParallelPackStrategyTest, CompareWithBlockingStrategy) {
     auto parallel_result = planner.plan_packs(config, items);
 
     // Then run with blocking strategy
-    config.type = strategy_type::BLOCKING;
+    config.type = strategy_type::BLOCKING_FIRST_FIT;
     auto blocking_result = planner.plan_packs(config, items);
 
     // Both strategies should pack all items

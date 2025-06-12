@@ -5,6 +5,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+include(FetchContent)
+FetchContent_Declare(
+    cli11
+    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+    GIT_TAG v2.3.2
+)
+FetchContent_MakeAvailable(cli11)
+
 # Check if we're building with Emscripten
 if(EMSCRIPTEN)
     message(STATUS "Building with Emscripten for WebAssembly")
@@ -130,8 +138,14 @@ set(HEADERS
 
 # WebAssembly specific files
 if(WASM_BUILD)
-    list(APPEND SOURCES src/wasm_bindings.cpp)
-    list(APPEND HEADERS include/wasm_bindings.h)
+    list(APPEND SOURCES
+        src/wasm_bindings.cpp
+        src/benchmark.cpp
+    )
+    list(APPEND HEADERS
+        include/wasm_bindings.h
+        include/benchmark.h
+    )
 endif()
 
 # Create library
@@ -143,7 +157,7 @@ if(WASM_BUILD)
     target_include_directories(${PROJECT_NAME}_wasm PRIVATE ${PROJECT_SOURCE_DIR}/include)
     target_link_libraries(${PROJECT_NAME}_wasm ${PROJECT_NAME}_LIB)
 
-    set(FILES_TO_COPY server.py index.html tests/test_pack_planner.mjs)
+    set(FILES_TO_COPY server.py index.html dashboard.html)
     foreach(f ${FILES_TO_COPY})
         add_custom_command(
             TARGET ${PROJECT_NAME}_wasm POST_BUILD
@@ -167,10 +181,10 @@ else()
     target_compile_options(${PROJECT_NAME} PRIVATE ${opts_list})
     target_compile_options(${PROJECT_NAME}_LIB PRIVATE ${opts_list})
 
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        POSITION_INDEPENDENT_CODE ON
-        INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
-    )
+    # set_target_properties(${PROJECT_NAME} PROPERTIES
+    #     POSITION_INDEPENDENT_CODE ON
+    #     INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
+    # )
 
     # Include directories
     target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/include)

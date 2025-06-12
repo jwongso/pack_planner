@@ -108,12 +108,17 @@ public:
         return m_total_items >= max_items || m_total_weight >= max_weight - 1e-9;
     }
 
-    // Getters
     /**
      * @brief Get the pack number
      * @return int The pack number
      */
     [[nodiscard]] int get_pack_number() const noexcept { return m_pack_number; }
+
+    /**
+     * @brief Set the pack number
+     * @param pack_number The pack number
+     */
+    void set_pack_number(int pack_number) { m_pack_number = pack_number; }
 
     /**
      * @brief Get the items in the pack
@@ -161,6 +166,24 @@ public:
             << ", Pack Weight: " << std::fixed << std::setprecision(2) << get_total_weight();
 
         return oss.str();
+    }
+
+    /**
+     * @brief Get the remaining weight based on the given maximum weight
+     * @param max_weight Maximum weight
+     * @return double The remaining weight in this Pack
+     */
+    [[nodiscard]] double get_remaining_weight_capacity(double max_weight) const noexcept {
+        return max_weight - get_total_weight();
+    }
+
+    /**
+     * @brief Get the remaining capacity capacity based on the given maximum capacity
+     * @param max_items Maximum capacity
+     * @return int The remaining capacity in this Pack
+     */
+    [[nodiscard]] int get_remaining_item_capacity(int max_items) const noexcept {
+        return max_items - get_total_items();
     }
 
 private:

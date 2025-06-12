@@ -104,7 +104,7 @@ public class ParallelPackStrategy : IPackStrategy
         maxWeight = Math.Max(0.1, maxWeight);
 
         var packs = new List<Pack>();
-        const int maxSafeReserve = 10000;
+        int maxSafeReserve = Math.Min(100000, items.Count / 10 + 1000);
         int estimatedPacks = Math.Max(64, (int)(items.Count * 0.00222) + 16);
         packs.Capacity = Math.Min(maxSafeReserve, estimatedPacks);
 
@@ -185,7 +185,7 @@ public class ParallelPackStrategy : IPackStrategy
         // Process items in this thread's chunk
         var localPacks = new List<Pack>();
         // SAFETY: Limit initial allocation to prevent OOM with extreme values
-        const int maxSafeReserve = 5000;
+        int maxSafeReserve = Math.Min(20000, (endIdx - startIdx) / 10 + 500);
         int estimatedLocalPacks = Math.Max(16, (int)((endIdx - startIdx) * 0.00222) + 8);
         localPacks.Capacity = Math.Min(maxSafeReserve, estimatedLocalPacks);
 
@@ -252,7 +252,7 @@ public class ParallelPackStrategy : IPackStrategy
 
         // Add local results to the shared result collection
         // SAFETY: Limit the total number of packs to prevent OOM
-        const int maxTotalPacks = 20000;
+        int maxTotalPacks = Math.Min(200000, items.Count / 5 + 10000);
         int packsToAdd = 0;
         foreach (var pack in localPacks)
         {

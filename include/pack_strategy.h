@@ -6,8 +6,10 @@
 #include "pack.h"
 
 enum class strategy_type {
-    BLOCKING,
-    PARALLEL
+    BLOCKING_FIRST_FIT,
+    PARALLEL_FIRST_FIT,
+    BLOCKING_BEST_FIT,
+    PARALLEL_BEST_FIT
 };
 
 /**

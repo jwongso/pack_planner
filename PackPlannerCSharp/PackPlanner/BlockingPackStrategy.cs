@@ -28,7 +28,7 @@ public class BlockingPackStrategy : IPackStrategy
         
         // Pre-allocate based on empirical ratio to avoid reallocations
         // SAFETY: Limit initial allocation to prevent OOM with extreme values
-        const int maxSafeReserve = 10000;
+        int maxSafeReserve = Math.Min(100000, items.Count / 10 + 1000);
         int estimatedPacks = Math.Max(64, (int)(items.Count * 0.00222) + 16);
         packs.Capacity = Math.Min(maxSafeReserve, estimatedPacks);
         

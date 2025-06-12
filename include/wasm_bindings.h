@@ -4,6 +4,7 @@
 #include "item.h"
 #include "pack.h"
 #include "pack_planner.h"
+#include "benchmark.h"
 #include <vector>
 #include <string>
 
@@ -88,13 +89,40 @@ public:
 
         return stats;
     }
+
+    // Add benchmark method for WASM
+    emscripten::val runBenchmark(int size, int sortOrder, int strategyType, int threadCount) {
+        benchmark bench;
+        benchmark_result result = bench.run_single_benchmark(
+            size,
+            static_cast<sort_order>(sortOrder),
+            static_cast<strategy_type>(strategyType),
+            threadCount
+        );
+
+        // Return results as a JavaScript object
+        emscripten::val jsResult = emscripten::val::object();
+        jsResult.set("size", result.size);
+        jsResult.set("order", result.order);
+        jsResult.set("strategy", result.strategy);
+        jsResult.set("numThreads", result.num_threads);
+        jsResult.set("sortingTime", result.sorting_time);
+        jsResult.set("packingTime", result.packing_time);
+        jsResult.set("totalTime", result.total_time);
+        jsResult.set("itemsPerSecond", result.items_per_second);
+        jsResult.set("totalPacks", result.total_packs);
+        jsResult.set("utilizationPercent", result.utilization_percent);
+
+        return jsResult;
+    }
 };
 
 EMSCRIPTEN_BINDINGS(pack_planner_module) {
     emscripten::class_<PackPlanner>("PackPlanner")
         .constructor<>()
         .function("packItems", &PackPlanner::packItems)
-        .function("getPlanningStats", &PackPlanner::getPlanningStats);
+        .function("getPlanningStats", &PackPlanner::getPlanningStats)
+        .function("runBenchmark", &PackPlanner::runBenchmark);
 
     emscripten::register_vector<std::string>("VectorString");
 
@@ -105,7 +133,7 @@ EMSCRIPTEN_BINDINGS(pack_planner_module) {
         .value("LONG_TO_SHORT", sort_order::LONG_TO_SHORT);
 
     emscripten::enum_<strategy_type>("StrategyType")
-        .value("BLOCKING", strategy_type::BLOCKING)
-        .value("PARALLEL", strategy_type::PARALLEL);
+        .value("BLOCKING", strategy_type::BLOCKING_FIRST_FIT)
+        .value("PARALLEL", strategy_type::PARALLEL_FIRST_FIT);
 }
 #endif

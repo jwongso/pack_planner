@@ -43,7 +43,7 @@ private:
         // Process items in this thread's chunk
         std::vector<pack> local_packs;
         // SAFETY: Limit initial allocation to prevent OOM with extreme values
-        const size_t max_safe_reserve = 5000;
+        const size_t max_safe_reserve = std::min<size_t>(20000, (end_idx - start_idx) / 10 + 500);
         local_packs.reserve(std::min(max_safe_reserve,
                         std::max<size_t>(16, static_cast<size_t>((end_idx - start_idx) * 0.00222) + 8)));
 
@@ -98,7 +98,7 @@ private:
         {
             std::lock_guard<std::mutex> lock(mutex);
             // SAFETY: Limit the total number of packs to prevent OOM
-            const size_t max_total_packs = 20000;
+            const size_t max_total_packs = std::min<size_t>(200000, items.size() / 5 + 10000);
             if (result_packs.size() < max_total_packs) {
                 result_packs.insert(result_packs.end(),
                                 local_packs.begin(),
@@ -144,7 +144,7 @@ public:
         if (items.size() < 5000 || m_num_threads == 1) {
             // SAFETY: Same fixes as in blocking strategy
             std::vector<pack> packs;
-            const size_t max_safe_reserve = 10000;
+            const size_t max_safe_reserve = std::min<size_t>(100000, items.size() / 10 + 1000);
             packs.reserve(std::min(max_safe_reserve,
                         std::max<size_t>(64, static_cast<size_t>(items.size() * 0.00222) + 16)));
             int pack_number = 1;
