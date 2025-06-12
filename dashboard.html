@@ -611,13 +611,8 @@
                 statusEl.innerHTML = '<div class="spinner"></div>Loading WASM Module...';
                 statusEl.className = 'status-indicator loading';
 
-                // Try to load the WASM module
-                if (typeof createModule !== 'undefined') {
-                    Module = await createModule();
-                } else {
-                    const wasmModule = await import('./pack_planner_wasm.js');
-                    Module = await wasmModule.default();
-                }
+                const wasmModule = await import('./pack_planner_wasm.js');
+                Module = await wasmModule.default();
 
                 statusEl.innerHTML = '✅ WASM Ready';
                 statusEl.className = 'status-indicator';

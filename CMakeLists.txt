@@ -5,14 +5,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-include(FetchContent)
-FetchContent_Declare(
-    cli11
-    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-    GIT_TAG v2.3.2
-)
-FetchContent_MakeAvailable(cli11)
-
 # Check if we're building with Emscripten
 if(EMSCRIPTEN)
     message(STATUS "Building with Emscripten for WebAssembly")
@@ -25,8 +17,6 @@ if(EMSCRIPTEN)
     set(EMSCRIPTEN_FLAGS
         "-s WASM=1"
         "-s ALLOW_MEMORY_GROWTH=1"
-        "-s MODULARIZE=1"
-        "-s EXPORT_NAME=\"createModule\""
         "-s EXPORTED_RUNTIME_METHODS=[\"ccall\",\"cwrap\"]"
         "-s EXPORT_ES6=1"
         "-s ASSERTIONS"
@@ -39,6 +29,14 @@ if(EMSCRIPTEN)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EMSCRIPTEN_FLAGS_STR}")
 else()
     set(WASM_BUILD FALSE)
+
+    include(FetchContent)
+    FetchContent_Declare(
+        cli11
+        GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+        GIT_TAG v2.3.2
+    )
+    FetchContent_MakeAvailable(cli11)
 
     find_program(CCACHE_FOUND ccache)
     if(CCACHE_FOUND)
@@ -181,10 +179,10 @@ else()
     target_compile_options(${PROJECT_NAME} PRIVATE ${opts_list})
     target_compile_options(${PROJECT_NAME}_LIB PRIVATE ${opts_list})
 
-    # set_target_properties(${PROJECT_NAME} PROPERTIES
-    #     POSITION_INDEPENDENT_CODE ON
-    #     INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
-    # )
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+        INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
+    )
 
     # Include directories
     target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/include)

@@ -539,13 +539,8 @@
                 statusEl.className = 'status loading';
 
                 // Load the WASM module - adjust path as needed
-                if (typeof createModule !== 'undefined') {
-                    Module = await createModule();
-                } else {
-                    // Fallback - try importing if it's an ES module
-                    const wasmModule = await import('./pack_planner_wasm.js');
-                    Module = await wasmModule.default();
-                }
+                const wasmModule = await import('./pack_planner_wasm.js');
+                Module = await wasmModule.default();
 
                 statusEl.textContent = '✅ WASM module loaded successfully!';
                 statusEl.className = 'status success';
