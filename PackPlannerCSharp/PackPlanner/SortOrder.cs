@@ -18,7 +18,13 @@ public enum SortOrder
     /// <summary>
     /// Sort by length descending (long to short)
     /// </summary>
-    LongToShort
+    LongToShort,
+
+    /// <summary>
+    /// Experimental PLINQ
+    /// </summary>
+    ShortToLongParallel,
+    LongToShortParallel
 }
 
 /// <summary>
@@ -68,14 +74,36 @@ public static class SortOrderExtensions
         switch (order)
         {
             case SortOrder.ShortToLong:
-                items.Sort((a, b) => a.Length.CompareTo(b.Length));
+                // Sort ascending by Length using IComparable<Item>
+                items.Sort();
                 break;
             case SortOrder.LongToShort:
-                items.Sort((a, b) => b.Length.CompareTo(a.Length));
+                // Sort descending by Length using custom comparer
+                items.Sort(Item.LengthDescendingComparer);
                 break;
+            case SortOrder.ShortToLongParallel:
+            {
+                var sorted = items.AsParallel()
+                                  .OrderBy(item => item.Length)
+                                  .ToList();
+                // Copy back the sorted list into original list
+                items.Clear();
+                items.AddRange(sorted);
+            }
+            break;
+
+            case SortOrder.LongToShortParallel:
+            {
+                var sorted = items.AsParallel()
+                                  .OrderByDescending(item => item.Length)
+                                  .ToList();
+                items.Clear();
+                items.AddRange(sorted);
+            }
+            break;
             case SortOrder.Natural:
             default:
-                // Keep original order
+                // Keep original order, do nothing
                 break;
         }
     }

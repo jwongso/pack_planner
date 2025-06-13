@@ -108,6 +108,15 @@ public class PackPlanner
 
         // Sort items
         var sortTimer = new Timer();
+
+        SortOrder actualOrder = safeConfig.Order switch
+        {
+            SortOrder.ShortToLong => SortOrder.ShortToLongParallel,
+            SortOrder.LongToShort => SortOrder.LongToShortParallel,
+            _ => safeConfig.Order
+        };
+
+
         sortTimer.Start();
         SortOrderExtensions.SortItems(items, safeConfig.Order);
         double sortingTime = sortTimer.Stop();
