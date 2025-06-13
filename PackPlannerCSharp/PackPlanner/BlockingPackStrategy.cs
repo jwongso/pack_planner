@@ -66,6 +66,17 @@ public class BlockingPackStrategy : IPackStrategy
                 }
                 else
                 {
+                    // Check if this item can never fit (weight exceeds maxWeight)
+                    if (item.Weight > maxWeight) {
+                        // Item is too heavy to fit in any pack, skip it
+                        remainingQuantity = 0;
+                        break;
+                    }
+                    // Fallback: If pack is empty but item should fit, something else is wrong
+                    if (currentPack.IsEmpty) {
+                        remainingQuantity = 0;
+                        break;
+                    }
                     // SAFETY: Limit maximum number of packs to prevent OOM
                     if (packs.Count >= maxSafeReserve)
                     {
