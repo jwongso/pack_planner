@@ -81,6 +81,18 @@ private:
                 if (added_quantity > 0) {
                     remaining_quantity -= added_quantity;
                 } else {
+                    // Check if this item can never fit (weight exceeds max_weight)
+                    if (item.get_weight() > max_weight) {
+                        // Item is too heavy to fit in any pack, skip it
+                        remaining_quantity = 0;
+                        break;
+                    }
+                    // Fallback: If pack is empty but item should fit, something else is wrong
+                    if (current_pack.is_empty()) {
+                        remaining_quantity = 0;
+                        break;
+                    }
+                    
                     // SAFETY: Limit maximum number of packs to prevent OOM
                     if (local_packs.size() >= max_safe_reserve) {
                         // Force exit if we've created too many packs
@@ -175,6 +187,18 @@ public:
                     if (added_quantity > 0) {
                         remaining_quantity -= added_quantity;
                     } else {
+                        // Check if this item can never fit (weight exceeds max_weight)
+                        if (i.get_weight() > max_weight) {
+                            // Item is too heavy to fit in any pack, skip it
+                            remaining_quantity = 0;
+                            break;
+                        }
+                        // Fallback: If pack is empty but item should fit, something else is wrong
+                        if (current_pack.is_empty()) {
+                            remaining_quantity = 0;
+                            break;
+                        }
+                        
                         // SAFETY: Limit maximum number of packs to prevent OOM
                         if (packs.size() >= max_safe_reserve) {
                             // Force exit if we've created too many packs
