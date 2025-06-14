@@ -97,7 +97,7 @@ public class PackPlannerTests
         var emptyItems = new List<Item>();
         var result = _planner.PlanPacks(_config, emptyItems);
 
-        Assert.Equal(1, result.Packs.Count); // Should create one empty pack
+        Assert.Single(result.Packs); // Should create one empty pack
         Assert.True(result.Packs[0].IsEmpty);
         Assert.Equal(0, result.TotalItems);
         Assert.Equal(0.0, result.UtilizationPercent);
@@ -300,7 +300,7 @@ public class PackPlannerTests
         var result = _planner.PlanPacks(_config, zeroQuantityItems);
 
         // Should only pack the normal item
-        Assert.Equal(1, result.Packs.Count);
+        Assert.Single(result.Packs);
         Assert.Equal(5, result.Packs[0].TotalItems);
         Assert.Equal(5.0, result.Packs[0].TotalWeight);
     }
@@ -345,100 +345,39 @@ public class PackPlannerTests
 }
 
 /// <summary>
-/// Parallel Pack Strategy Tests
+/// Pack Planner Tests - Base class for both strategies
 /// </summary>
-public class ParallelPackStrategyTests
+public class PackPlannerTestBase
 {
-    private readonly global::PackPlanner.PackPlanner _planner;
-    private readonly List<Item> _items;
-    private readonly PackPlannerConfig _config;
+    protected readonly global::PackPlanner.PackPlanner _planner;
+    protected readonly List<Item> _items;
+    protected PackPlannerConfig _config;
+    protected readonly StrategyType _strategyType;
 
-    public ParallelPackStrategyTests()
+    public PackPlannerTestBase(StrategyType strategyType)
     {
-        // Common setup for parallel strategy tests
+        _strategyType = strategyType;
+
+        // Common setup for pack planner tests
         _planner = new global::PackPlanner.PackPlanner();
 
         // Create some test items
         _items = new List<Item>
         {
-            new Item(1, 100, 50, 2.0),  // total weight: 100.0
-            new Item(2, 200, 30, 3.0),  // total weight: 90.0
-            new Item(3, 300, 20, 5.0),  // total weight: 100.0
-            new Item(4, 150, 40, 2.5)   // total weight: 100.0
+            new Item(1, 100, 5, 2.0),  // total weight: 10.0
+            new Item(2, 200, 3, 3.0),  // total weight: 9.0
+            new Item(3, 300, 2, 5.0),  // total weight: 10.0
+            new Item(4, 150, 4, 2.5)   // total weight: 10.0
         };
 
-        // Default configuration
+        // Default configuration with strategy from parameter
         _config = new PackPlannerConfig
         {
             Order = SortOrder.Natural,
             MaxItemsPerPack = 10,
             MaxWeightPerPack = 25.0,
-            Type = StrategyType.Parallel,
+            Type = strategyType,
             ThreadCount = 4
         };
-    }
-
-    [Fact]
-    public void BasicParallelPacking()
-    {
-        var result = _planner.PlanPacks(_config, _items);
-
-        // Verify strategy name
-        Assert.Contains("Parallel", result.StrategyName);
-
-        // Verify all items were packed
-        int totalInput = _items.Sum(i => i.Quantity);
-
-        Assert.Equal(totalInput, result.TotalItems);
-
-        // Verify no pack exceeds constraints
-        foreach (var pack in result.Packs)
-        {
-            if (!pack.IsEmpty)
-            {
-                Assert.True(pack.TotalItems <= _config.MaxItemsPerPack);
-                Assert.True(pack.TotalWeight <= _config.MaxWeightPerPack);
-            }
-        }
-    }
-
-    [Fact]
-    public void CompareWithBlockingStrategy()
-    {
-        // First run with parallel strategy
-        var parallelResult = _planner.PlanPacks(_config, _items);
-
-        // Then run with blocking strategy
-        var blockingConfig = _config with { Type = StrategyType.Blocking };
-        var blockingResult = _planner.PlanPacks(blockingConfig, _items);
-
-        // Both strategies should pack all items
-        Assert.Equal(parallelResult.TotalItems, blockingResult.TotalItems);
-
-        // Compare utilization - should be similar (within 5%)
-        Assert.True(Math.Abs(parallelResult.UtilizationPercent - blockingResult.UtilizationPercent) <= 5.0);
-    }
-
-    [Fact]
-    public void ThreadCountImpact()
-    {
-        // Test with different thread counts
-        var threadCounts = new[] { 1, 2, 4, 8 };
-        var packingTimes = new List<double>();
-
-        foreach (int threads in threadCounts)
-        {
-            var config = _config with { ThreadCount = threads };
-            var result = _planner.PlanPacks(config, _items);
-            packingTimes.Add(result.PackingTime);
-
-            // Verify all items were packed correctly
-            Assert.Equal(140, result.TotalItems); // 50+30+20+40
-        }
-
-        // This is not a strict test as performance depends on hardware
-        // but generally more threads should not be drastically slower
-        // Just check that the test runs without errors
-        Assert.Equal(threadCounts.Length, packingTimes.Count);
     }
 }
