@@ -28,30 +28,30 @@ public class PackPlanningRequest
 public class ItemRequest
 {
     /// <summary>
-    /// Unique identifier for the item
+    /// Unique identifier for the item (can be 0 or any integer)
     /// </summary>
     [Required]
     public int Id { get; set; }
 
     /// <summary>
-    /// Length of the item
+    /// Length of the item (must be positive)
     /// </summary>
     [Required]
-    [Range(1, int.MaxValue, ErrorMessage = "Length must be positive")]
+    [Range(1, 1000000, ErrorMessage = "Length must be between 1 and 1,000,000")]
     public int Length { get; set; }
 
     /// <summary>
-    /// Quantity of this item
+    /// Quantity of this item (must be positive)
     /// </summary>
     [Required]
-    [Range(1, int.MaxValue, ErrorMessage = "Quantity must be positive")]
+    [Range(1, 100000, ErrorMessage = "Quantity must be between 1 and 100,000")]
     public int Quantity { get; set; }
 
     /// <summary>
-    /// Weight per piece of the item
+    /// Weight per piece of the item (must be positive)
     /// </summary>
     [Required]
-    [Range(0.0, double.MaxValue, ErrorMessage = "Weight must be non-negative")]
+    [Range(0.001, 10000.0, ErrorMessage = "Weight must be between 0.001 and 10,000")]
     public double Weight { get; set; }
 }
 
@@ -66,15 +66,15 @@ public class PackPlanningConfiguration
     public string SortOrder { get; set; } = "NATURAL";
 
     /// <summary>
-    /// Maximum number of items per pack
+    /// Maximum number of items per pack (reasonable limit for performance)
     /// </summary>
-    [Range(1, int.MaxValue, ErrorMessage = "MaxItemsPerPack must be positive")]
+    [Range(1, 10000, ErrorMessage = "MaxItemsPerPack must be between 1 and 10,000")]
     public int MaxItemsPerPack { get; set; } = 100;
 
     /// <summary>
-    /// Maximum weight per pack
+    /// Maximum weight per pack (minimum 0.1 for safety)
     /// </summary>
-    [Range(0.1, double.MaxValue, ErrorMessage = "MaxWeightPerPack must be positive")]
+    [Range(0.1, 100000.0, ErrorMessage = "MaxWeightPerPack must be between 0.1 and 100,000")]
     public double MaxWeightPerPack { get; set; } = 200.0;
 
     /// <summary>
@@ -83,10 +83,10 @@ public class PackPlanningConfiguration
     public string StrategyType { get; set; } = "BLOCKING";
 
     /// <summary>
-    /// Number of threads for parallel strategy
+    /// Number of threads for parallel strategy (0 = auto-detect processor count, max 32)
     /// </summary>
-    [Range(1, 32, ErrorMessage = "ThreadCount must be between 1 and 32")]
-    public int ThreadCount { get; set; } = 4;
+    [Range(0, 32, ErrorMessage = "ThreadCount must be between 0 and 32 (0 = auto-detect processor count)")]
+    public int ThreadCount { get; set; } = 0;
 }
 
 #endregion

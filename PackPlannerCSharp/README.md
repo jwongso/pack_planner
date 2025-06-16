@@ -1,10 +1,11 @@
 # Pack Planner C#
 
-A high-performance C# pack planning application that efficiently organizes items into packs based on weight and quantity constraints. This is a C# port of the original C++ pack_planner application, maintaining the same functionality while leveraging C#-specific optimizations and modern language features.
+A high-performance C# pack planning solution that efficiently organizes items into packs based on weight and quantity constraints. This solution includes both a console application and a modern Web API, providing flexible deployment options for different use cases. This is a C# port of the original C++ pack_planner application, maintaining the same functionality while leveraging C#-specific optimizations and modern language features.
 
 ## Features
 
-- **Multiple Input Methods**: Read from standard input or file
+### Core Pack Planning Features
+- **Multiple Input Methods**: Read from standard input or file (console app)
 - **Flexible Sorting**: Support for NATURAL, SHORT_TO_LONG, and LONG_TO_SHORT sorting orders
 - **Optimized Algorithms**: O(n) time complexity greedy packing with both blocking and parallel strategies
 - **High-Resolution Timing**: Microsecond precision timing utilities using `Stopwatch`
@@ -15,6 +16,16 @@ A high-performance C# pack planning application that efficiently organizes items
 - **Overflow Protection**: Safe arithmetic operations to prevent integer and floating-point overflow
 - **Modern C# Features**: Uses records, pattern matching, nullable reference types, and other C# 9+ features
 
+### Web API Features
+- **RESTful API**: Modern HTTP API with OpenAPI/Swagger documentation
+- **Async Processing**: Support for both synchronous and asynchronous pack planning
+- **Rate Limiting**: Built-in rate limiting to prevent API abuse
+- **Health Checks**: Comprehensive health monitoring endpoints
+- **CORS Support**: Cross-origin resource sharing for web applications
+- **Input Validation**: Comprehensive request validation with detailed error messages
+- **Performance Metrics**: Detailed timing and utilization metrics in responses
+- **Auto Thread Detection**: Automatic optimal thread count detection based on system capabilities
+
 ## Build Requirements
 
 - .NET 9.0 or higher
@@ -22,16 +33,31 @@ A high-performance C# pack planning application that efficiently organizes items
 
 ## Building
 
+### Console Application
 ```bash
 cd PackPlannerCSharp/PackPlanner
 dotnet build -c Release
 ```
 
+### Web API
+```bash
+cd PackPlannerCSharp/PackPlanner.Api
+dotnet build -c Release
+```
+
+### Build All Projects
+```bash
+cd PackPlannerCSharp
+dotnet build -c Release
+```
+
 ## Usage
 
-### Basic Usage
+### Console Application
 
 ```bash
+cd PackPlannerCSharp/PackPlanner
+
 # Read from standard input
 dotnet run
 
@@ -44,6 +70,89 @@ dotnet run -- --benchmark
 # Show help
 dotnet run -- --help
 ```
+
+### Web API
+
+```bash
+cd PackPlannerCSharp/PackPlanner.Api
+
+# Run the API server
+dotnet run
+
+# Run in production mode
+dotnet run --environment Production
+
+# The API will be available at:
+# - HTTP: http://localhost:5000
+# - HTTPS: https://localhost:5001
+# - Swagger UI: https://localhost:5001/swagger
+```
+
+#### API Endpoints
+
+**Core Pack Planning:**
+- `POST /api/packplanner/plan` - Synchronous pack planning
+- `POST /api/packplanner/plan-async` - Asynchronous pack planning
+- `GET /api/packplanner/jobs/{jobId}` - Get async job status
+- `GET /api/packplanner/jobs/{jobId}/result` - Get async job result
+- `DELETE /api/packplanner/jobs/{jobId}` - Cancel/delete async job
+
+**Information Endpoints:**
+- `GET /api/packplanner/strategies` - Get available packing strategies
+- `GET /api/packplanner/sort-orders` - Get available sort orders
+- `GET /api/packplanner/rate-limit-info` - Get rate limiting information
+
+**System Endpoints:**
+- `GET /health` - Health check
+- `GET /api/packplanner/version` - API version information
+
+#### Example API Request
+
+```json
+POST /api/packplanner/plan
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "id": 1001,
+      "length": 6200,
+      "quantity": 30,
+      "weight": 9.653
+    },
+    {
+      "id": 2001,
+      "length": 7200,
+      "quantity": 50,
+      "weight": 11.21
+    }
+  ],
+  "configuration": {
+    "sortOrder": "NATURAL",
+    "maxItemsPerPack": 40,
+    "maxWeightPerPack": 500.0,
+    "strategyType": "BLOCKING",
+    "threadCount": 0
+  }
+}
+```
+
+#### API Validation Limits
+
+The API enforces the following validation constraints for safety and performance:
+
+**Item Constraints:**
+- `id`: Any integer (including 0)
+- `length`: 1 to 1,000,000
+- `quantity`: 1 to 100,000
+- `weight`: 0.001 to 10,000
+
+**Configuration Constraints:**
+- `maxItemsPerPack`: 1 to 10,000
+- `maxWeightPerPack`: 0.1 to 100,000
+- `threadCount`: 0 to 32 (0 = auto-detect processor count)
+- `sortOrder`: "NATURAL", "SHORT_TO_LONG", "LONG_TO_SHORT"
+- `strategyType`: "BLOCKING", "PARALLEL"
 
 ### Input Format
 
@@ -152,19 +261,43 @@ The packing algorithm uses a greedy approach:
 
 ```
 PackPlannerCSharp/
-├── PackPlanner/
-│   ├── PackPlanner.csproj      # Project configuration with optimizations
-│   ├── Program.cs              # Main entry point and input parsing
-│   ├── Item.cs                 # Immutable item struct
-│   ├── Pack.cs                 # Pack container with constraint checking
-│   ├── PackPlanner.cs          # Main planning algorithm and configuration
-│   ├── SortOrder.cs            # Sorting enumeration and extensions
-│   ├── Timer.cs                # High-resolution timing utility
-│   ├── IPackStrategy.cs        # Strategy pattern interface and factory
-│   ├── BlockingPackStrategy.cs # Sequential packing implementation
-│   ├── ParallelPackStrategy.cs # Parallel packing implementation
-│   ├── Benchmark.cs            # Performance testing framework
-README.md                       # This file
+├── PackPlanner/                    # Console Application
+│   ├── PackPlanner.csproj          # Project configuration with optimizations
+│   ├── Program.cs                  # Main entry point and input parsing
+│   ├── Item.cs                     # Immutable item struct
+│   ├── Pack.cs                     # Pack container with constraint checking
+│   ├── PackPlanner.cs              # Main planning algorithm and configuration
+│   ├── SortOrder.cs                # Sorting enumeration and extensions
+│   ├── Timer.cs                    # High-resolution timing utility
+│   ├── IPackStrategy.cs            # Strategy pattern interface and factory
+│   ├── BlockingPackStrategy.cs     # Sequential packing implementation
+│   ├── ParallelPackStrategy.cs     # Parallel packing implementation
+│   └── Benchmark.cs                # Performance testing framework
+├── PackPlanner.Api/                # Web API Application
+│   ├── PackPlanner.Api.csproj      # API project configuration
+│   ├── Program.cs                  # API startup and configuration
+│   ├── Controllers/
+│   │   └── PackPlannerController.cs # Main API controller
+│   ├── Models/
+│   │   └── ApiModels.cs            # Request/response models with validation
+│   ├── Middleware/
+│   │   └── RateLimitingMiddleware.cs # Rate limiting implementation
+│   ├── Configuration/
+│   │   └── RateLimitingOptions.cs  # Rate limiting configuration
+│   ├── Properties/
+│   │   └── launchSettings.json     # Development server settings
+│   ├── appsettings.json            # Application configuration
+│   └── appsettings.Development.json # Development configuration
+├── PackPlanner.Tests/              # Unit Tests
+│   ├── PackPlanner.Tests.csproj    # Test project configuration
+│   ├── PackPlannerTests.cs         # Core algorithm tests
+│   ├── ItemTests.cs                # Item struct tests
+│   ├── PackTests.cs                # Pack container tests
+│   ├── BlockingStrategyTests.cs    # Blocking strategy tests
+│   ├── ParallelStrategyTests.cs    # Parallel strategy tests
+│   └── PackPlannerStrategyTestBase.cs # Base test class
+├── README.md                       # This file
+└── PERFORMANCE_COMPARISON.md       # C++ vs C# performance analysis
 ```
 
 ## Differences from C++ Version
@@ -231,10 +364,51 @@ This project is provided as-is for educational and evaluation purposes.
 4. **Parallel Processing**: Automatic scaling based on data size and processor count
 5. **Memory Pooling**: Consider ArrayPool<T> for future optimizations
 
+## Web API Architecture
+
+### API Design Principles
+- **RESTful Design**: Following REST conventions for predictable API behavior
+- **OpenAPI Specification**: Full Swagger/OpenAPI documentation for easy integration
+- **Async-First**: Designed for high-concurrency scenarios with async/await patterns
+- **Validation-Heavy**: Comprehensive input validation with detailed error responses
+- **Rate Limited**: Built-in protection against abuse and resource exhaustion
+- **Health Monitoring**: Comprehensive health checks for production deployment
+
+### Rate Limiting
+The API implements sophisticated rate limiting:
+- **Sync Endpoints**: 100 requests per 15 minutes per IP
+- **Async Endpoints**: 50 requests per 15 minutes per IP
+- **Info Endpoints**: 200 requests per 15 minutes per IP
+- **Headers**: Rate limit information included in response headers
+
+### Async Job Processing
+For large datasets, the API supports asynchronous processing:
+1. Submit job via `POST /api/packplanner/plan-async`
+2. Receive job ID and status URL
+3. Poll job status via `GET /api/packplanner/jobs/{jobId}`
+4. Retrieve results when completed via `GET /api/packplanner/jobs/{jobId}/result`
+
+### Error Handling
+The API provides detailed error responses:
+- **400 Bad Request**: Invalid input data with validation details
+- **429 Too Many Requests**: Rate limit exceeded
+- **404 Not Found**: Job not found or expired
+- **500 Internal Server Error**: Unexpected server errors
+
 ### Future Enhancements
 
-1. **Async/Await**: Potential for async file I/O and parallel processing
-2. **Memory Pooling**: ArrayPool<T> for reduced allocations
-3. **SIMD Operations**: Vector<T> for mathematical operations
-4. **Native AOT**: Ahead-of-time compilation for faster startup
-5. **Benchmarking**: Integration with BenchmarkDotNet for detailed performance analysis
+#### Console Application
+1. **Memory Pooling**: ArrayPool<T> for reduced allocations
+2. **SIMD Operations**: Vector<T> for mathematical operations
+3. **Native AOT**: Ahead-of-time compilation for faster startup
+4. **Benchmarking**: Integration with BenchmarkDotNet for detailed performance analysis
+
+#### Web API
+1. **Authentication**: JWT-based authentication for enterprise use
+2. **Database Integration**: Persistent job storage and history
+3. **Caching**: Redis-based caching for frequently requested configurations
+4. **Metrics**: Prometheus/Grafana integration for monitoring
+5. **Containerization**: Docker support for easy deployment
+6. **Load Balancing**: Support for horizontal scaling
+7. **WebSocket Support**: Real-time job progress updates
+8. **File Upload**: Support for bulk item import via CSV/Excel files
