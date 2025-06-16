@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pack Planner REST API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .input-section, .output-section {
+            flex: 1;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .input-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .input-group small {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+            display: block;
+        }
+
+        textarea {
+            width: 100%;
+            height: 180px;
+            font-family: 'Courier New', monospace;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            margin: 10px 0;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .pack {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background: #f9f9f9;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+
+        .error {
+            color: #e74c3c;
+            background: #fadbd8;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+
+        .processing-steps {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .processing-step {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            padding: 5px 0;
+        }
+
+        .step-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .step-pending {
+            background: #e9ecef;
+            color: #6c757d;
+        }
+
+        .step-active {
+            background: #3498db;
+            color: white;
+        }
+
+        .step-complete {
+            background: #28a745;
+            color: white;
+        }
+
+        .step-error {
+            background: #dc3545;
+            color: white;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #34495e;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+
+        /* Benchmark styles */
+        .benchmark-section {
+            display: none;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .benchmark-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .benchmark-controls .input-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .benchmark-results {
+            overflow-x: auto;
+        }
+
+        .benchmark-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .benchmark-table th, .benchmark-table td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .benchmark-table th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
+        }
+
+        .benchmark-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .benchmark-table tr:hover {
+            background-color: #f0f7ff;
+        }
+
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        .tab-button {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        .tab-button.active {
+            background: #3498db;
+            color: white;
+        }
+
+        .chart-container {
+            height: 400px;
+            margin-top: 20px;
+        }
+
+        /* New styles for async controls */
+        .async-controls {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .job-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .job-progress {
+            flex: 1;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .job-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #28a745);
+            transition: width 0.3s ease;
+        }
+
+        .api-config {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Pack Planner REST API</h1>
+
+    <!-- API Configuration Section -->
+    <div class="api-config">
+        <strong>🌐 API Configuration:</strong>
+        <div style="display: flex; gap: 15px; align-items: center; margin-top: 5px;">
+            <label>
+                Base URL:
+                <input type="text" id="apiBaseUrl" value="http://localhost:5135/api" style="width: 300px;">
+            </label>
+            <button id="testConnectionButton">🔗 Test Connection</button>
+            <span id="connectionStatus"></span>
+        </div>
+    </div>
+
+    <div class="tab-buttons">
+        <button id="packingTab" class="tab-button active">Packing Tool</button>
+        <button id="benchmarkTab" class="tab-button">Performance Benchmark</button>
+    </div>
+
+    <div class="container" id="packingSection">
+        <div class="input-section">
+            <h2>Configuration</h2>
+
+            <div class="input-group">
+                <label for="maxItems">Max Items per Pack:</label>
+                <input type="number" id="maxItems" value="10" min="1">
+            </div>
+
+            <div class="input-group">
+                <label for="maxWeight">Max Weight per Pack (kg):</label>
+                <input type="number" id="maxWeight" value="25.0" step="0.1" min="0.1">
+            </div>
+
+            <div class="input-group">
+                <label for="sortOrder">Sort Order:</label>
+                <select id="sortOrder">
+                    <option value="0">Natural (Original Order)</option>
+                    <option value="1">Short to Long</option>
+                    <option value="2">Long to Short</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="strategyType">Strategy Type:</label>
+                <select id="strategyType">
+                    <option value="0">Blocking (Sequential)</option>
+                    <option value="1">Parallel (Multi-threaded)</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="threadCount">Thread Count (for Parallel Strategy):</label>
+                <input type="number" id="threadCount" value="4" min="1" max="32">
+            </div>
+
+            <div class="input-group">
+                <label for="itemCount">Number of Items to Generate:</label>
+                <input type="number" id="itemCount" value="20" min="1" max="20000000">
+                <small>Range: 1 to 20,000,000 items</small>
+            </div>
+
+            <!-- Async Controls Section -->
+            <div class="async-controls">
+                <h3>🔄 Processing Mode</h3>
+                <div class="input-group">
+                    <label for="packingMode">Packing Mode:</label>
+                    <select id="packingMode">
+                        <option value="sync">Synchronous</option>
+                        <option value="async">Asynchronous</option>
+                    </select>
+                    <small>Use async mode for large datasets (&gt;10,000 items)</small>
+                </div>
+
+                <!-- Async Job Status (initially hidden) -->
+                <div id="asyncJobStatus" style="display: none;">
+                    <div class="job-status">
+                        <strong>Job Status:</strong>
+                        <span id="jobStatusText">-</span>
+                        <button id="cancelJobButton" style="padding: 2px 8px; font-size: 12px;">❌ Cancel</button>
+                    </div>
+                    <div class="job-progress">
+                        <div class="job-progress-fill" id="jobProgressFill" style="width: 0%;"></div>
+                    </div>
+                    <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                        <span id="jobDetails">Job ID: <span id="currentJobId">-</span> |
+                        Started: <span id="jobStartTime">-</span> |
+                        ETA: <span id="jobEta">-</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Items (Format: [id, length, quantity, weight])</h3>
+            <textarea id="itemsInput" placeholder="Enter items as JSON array...">[
+    [1, 100, 5, 2.5],
+    [2, 200, 3, 4.0],
+    [3, 150, 8, 1.5],
+    [4, 300, 2, 3.2],
+    [5, 120, 10, 1.8],
+    [6, 250, 4, 2.9],
+    [7, 180, 6, 2.1],
+    [8, 350, 1, 5.5]
+]</textarea>
+
+            <button id="runButton" disabled>🔄 Run Packing</button>
+            <button id="generateButton">🎲 Generate Test Data</button>
+            <button id="downloadInputButton" disabled>📥 Download Full Input Data</button>
+
+            <div id="status" class="status">Checking API connection...</div>
+
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <div class="processing-steps" id="processingSteps">
+                <div class="processing-step" id="step1">
+                    <div class="step-icon step-pending" id="step1Icon">1</div>
+                    <span>Validating inputs...</span>
+                </div>
+                <div class="processing-step" id="step2">
+                    <div class="step-icon step-pending" id="step2Icon">2</div>
+                    <span>Parsing item data...</span>
+                </div>
+                <div class="processing-step" id="step3">
+                    <div class="step-icon step-pending" id="step3Icon">3</div>
+                    <span>Preparing API request...</span>
+                </div>
+                <div class="processing-step" id="step4">
+                    <div class="step-icon step-pending" id="step4Icon">4</div>
+                    <span>Processing items...</span>
+                </div>
+                <div class="processing-step" id="step5">
+                    <div class="step-icon step-pending" id="step5Icon">5</div>
+                    <span>Generating results...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="output-section">
+            <h2>Packing Results</h2>
+            <div id="results"></div>
+            <div id="error"></div>
+        </div>
+    </div>
+
+    <div class="benchmark-section" id="benchmarkSection">
+        <h2>Performance Benchmark</h2>
+
+        <div class="benchmark-controls">
+            <div class="input-group">
+                <label for="benchSize">Item Count:</label>
+                <select id="benchSize">
+                    <option value="10000">10,000 items</option>
+                    <option value="100000">100,000 items</option>
+                    <option value="1000000">1,000,000 items</option>
+                    <option value="5000000">5,000,000 items</option>
+                    <option value="10000000">10,000,000 items</option>
+                    <option value="20000000">20,000,000 items</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="benchSortOrder">Sort Order:</label>
+                <select id="benchSortOrder">
+                    <option value="0">Natural (Original Order)</option>
+                    <option value="1">Short to Long</option>
+                    <option value="2">Long to Short</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="benchStrategy">Strategy:</label>
+                <select id="benchStrategy">
+                    <option value="0">Blocking (Sequential)</option>
+                    <option value="1">Parallel (Multi-threaded)</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label for="benchThreads">Thread Count:</label>
+                <input type="number" id="benchThreads" value="4" min="1" max="32">
+            </div>
+        </div>
+
+        <button id="runBenchmarkButton">🔍 Run Benchmark</button>
+        <button id="runFullBenchmarkButton">📊 Run Full Benchmark Suite</button>
+        <button id="exportBenchmarkButton" style="margin-left: 10px;">📊 Export CSV</button>
+
+        <div id="benchmarkStatus" class="status"></div>
+
+        <div class="benchmark-results">
+            <table class="benchmark-table" id="benchmarkTable">
+                <thead>
+                    <tr>
+                        <th>Size</th>
+                        <th>Strategy</th>
+                        <th>Threads</th>
+                        <th>Sort Order</th>
+                        <th>Sort Time (ms)</th>
+                        <th>Pack Time (ms)</th>
+                        <th>Total Time (ms)</th>
+                        <th>Items/sec</th>
+                        <th>Packs</th>
+                        <th>Utilization %</th>
+                    </tr>
+                </thead>
+                <tbody id="benchmarkResults">
+                    <!-- Results will be added here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="chart-container" id="benchmarkChart">
+            <!-- Chart will be rendered here -->
+        </div>
+    </div>
+
+    <script>
+        // Global API configuration
+        const apiConfig = {
+            baseUrl: 'http://localhost:5135/api',
+            timeout: 300000, // 5 minutes
+            retryAttempts: 3
+        };
+
+        // Job polling state
+        let currentJobId = null;
+        let jobPollingInterval = null;
+        let fullInputData = null;
+        let fullResultsData = null;
+        let benchmarkResults = [];
+
+        // Helper functions
+        function updateProgress(percentage) {
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            progressBar.style.display = 'block';
+            progressFill.style.width = `${percentage}%`;
+        }
+
+        function updateStep(stepNumber, status) {
+            const stepIcon = document.getElementById(`step${stepNumber}Icon`);
+            stepIcon.className = `step-icon step-${status}`;
+            if (status === 'complete') {
+                stepIcon.innerHTML = '✓';
+            } else if (status === 'error') {
+                stepIcon.innerHTML = '✗';
+            } else if (status === 'active') {
+                stepIcon.innerHTML = '<div class="spinner" style="width: 12px; height: 12px; border-width: 2px; margin: 0;"></div>';
+            } else {
+                stepIcon.innerHTML = stepNumber;
+            }
+        }
+
+        function showProcessingSteps() {
+            const processingSteps = document.getElementById('processingSteps');
+            processingSteps.style.display = 'block';
+            for (let i = 1; i <= 5; i++) {
+                updateStep(i, 'pending');
+            }
+        }
+
+        function hideProcessingSteps() {
+            const processingSteps = document.getElementById('processingSteps');
+            const progressBar = document.getElementById('progressBar');
+            processingSteps.style.display = 'none';
+            progressBar.style.display = 'none';
+        }
+
+        function showAsyncJobStatus() {
+            document.getElementById('asyncJobStatus').style.display = 'block';
+            document.getElementById('currentJobId').textContent = currentJobId;
+            document.getElementById('jobStartTime').textContent = new Date().toLocaleTimeString();
+        }
+
+        function hideAsyncJobStatus() {
+            document.getElementById('asyncJobStatus').style.display = 'none';
+        }
+
+        // API Connection Test
+        async function testApiConnection() {
+            const statusEl = document.getElementById('connectionStatus');
+            const runButton = document.getElementById('runButton');
+            const testButton = document.getElementById('testConnectionButton');
+
+            try {
+                statusEl.innerHTML = '<div class="spinner" style="width: 16px; height: 16px;"></div>';
+                testButton.disabled = true;
+
+                const baseUrl = document.getElementById('apiBaseUrl').value;
+                apiConfig.baseUrl = baseUrl;
+
+                const response = await fetch(`${baseUrl}/health`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (response.ok) {
+                    const health = await response.json();
+                    statusEl.innerHTML = '✅ Connected';
+                    statusEl.style.color = '#28a745';
+                    runButton.disabled = false;
+
+                    document.getElementById('status').textContent =
+                        `✅ API connected! Version: ${health.version || 'Unknown'}`;
+                    document.getElementById('status').className = 'status success';
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                statusEl.innerHTML = '❌ Failed';
+                statusEl.style.color = '#dc3545';
+                runButton.disabled = true;
+
+                document.getElementById('status').textContent = '❌ API connection failed';
+                document.getElementById('status').className = 'status error';
+                document.getElementById('error').innerHTML =
+                    `<div class="error"><strong>Connection Error:</strong> ${error.message}<br>
+                    <strong>Troubleshooting:</strong><br>
+                    • Make sure the .NET API server is running<br>
+                    • Check the API base URL is correct (current: ${apiConfig.baseUrl})<br>
+                    • Verify CORS is configured for this domain</div>`;
+            } finally {
+                testButton.disabled = false;
+            }
+        }
+
+        // Generate test data (same as original)
+        function generateTestData() {
+            const itemCount = parseInt(document.getElementById('itemCount').value);
+
+            if (itemCount < 1 || itemCount > 20000000) {
+                document.getElementById('error').innerHTML =
+                    '<div class="error">❌ Item count must be between 1 and 20,000,000</div>';
+                return;
+            }
+
+            const sizes = [50, 100, 150, 200, 250, 300, 350, 400];
+            const items = [];
+
+            const statusEl = document.getElementById('status');
+            const generateButton = document.getElementById('generateButton');
+
+            if (itemCount > 1000) {
+                statusEl.textContent = `🎲 Generating ${itemCount.toLocaleString()} items...`;
+                statusEl.className = 'status loading';
+                generateButton.disabled = true;
+            }
+
+            const batchSize = 10000;
+            let processed = 0;
+
+            function generateBatch() {
+                const endIndex = Math.min(processed + batchSize, itemCount);
+
+                for (let i = processed; i < endIndex; i++) {
+                    const id = i + 1;
+                    const length = sizes[Math.floor(Math.random() * sizes.length)];
+                    const quantity = Math.floor(Math.random() * 10) + 1;
+                    const weight = (Math.random() * 4.5 + 0.5).toFixed(1);
+
+                    items.push([id, length, quantity, parseFloat(weight)]);
+                }
+
+                processed = endIndex;
+
+                if (processed < itemCount) {
+                    if (itemCount > 1000) {
+                        statusEl.textContent = `🎲 Generating items... ${processed.toLocaleString()}/${itemCount.toLocaleString()}`;
+                    }
+                    setTimeout(generateBatch, 0);
+                } else {
+                    fullInputData = [...items];
+                    const displayItems = items.slice(0, 100);
+                    const displayData = JSON.stringify(displayItems, null, 2);
+
+                    if (items.length > 100) {
+                        document.getElementById('itemsInput').value = displayData +
+                            `\n\n// Showing first 100 of ${items.length.toLocaleString()} items\n// Use "Download Full Input Data" to get complete dataset`;
+                    } else {
+                        document.getElementById('itemsInput').value = displayData;
+                    }
+
+                    document.getElementById('downloadInputButton').disabled = items.length <= 100;
+
+                    if (itemCount > 1000) {
+                        statusEl.textContent = `✅ Generated ${itemCount.toLocaleString()} items successfully!`;
+                        statusEl.className = 'status success';
+                        generateButton.disabled = false;
+                    }
+
+                    document.getElementById('error').innerHTML = '';
+                }
+            }
+
+            generateBatch();
+        }
+
+        // Download functions
+        function downloadInputData() {
+            if (!fullInputData || fullInputData.length === 0) {
+                alert('No full input data available to download');
+                return;
+            }
+
+            const jsonData = JSON.stringify(fullInputData, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pack_planner_input_${fullInputData.length}_items.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadResults() {
+            if (!fullResultsData || fullResultsData.length === 0) {
+                alert('No full results data available to download');
+                return;
+            }
+
+            const textData = fullResultsData.join('\n\n' + '='.repeat(50) + '\n\n');
+            const blob = new Blob([textData], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pack_planner_results_${fullResultsData.length}_packs.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Prepare API request
+        function prepareApiRequest() {
+            const maxItems = parseInt(document.getElementById('maxItems').value);
+            const maxWeight = parseFloat(document.getElementById('maxWeight').value);
+            const sortOrder = document.getElementById('sortOrder').value;
+            const strategyType = document.getElementById('strategyType').value;
+            const threadCount = parseInt(document.getElementById('threadCount').value);
+
+            let items;
+            if (fullInputData && fullInputData.length > 0) {
+                items = fullInputData;
+            } else {
+                const itemsText = document.getElementById('itemsInput').value.trim();
+                items = JSON.parse(itemsText);
+            }
+
+            return {
+                items: items.map(item => ({
+                    id: item[0],
+                    length: item[1],
+                    quantity: item[2],
+                    weight: item[3]
+                })),
+                configuration: {
+                    sortOrder: ['NATURAL', 'SHORT_TO_LONG', 'LONG_TO_SHORT'][parseInt(sortOrder)],
+                    maxItemsPerPack: maxItems,
+                    maxWeightPerPack: maxWeight,
+                    strategyType: parseInt(strategyType) === 0 ? 'BLOCKING' : 'PARALLEL',
+                    threadCount: threadCount
+                }
+            };
+        }
+
+        // Display API results
+        function displayApiResults(result, jsProcessingTime = 0) {
+            const resultsEl = document.getElementById('results');
+            const statusEl = document.getElementById('status');
+
+            if (result.success && result.packs && result.packs.length > 0) {
+                const totalPacks = result.packs.length;
+                const packsToShow = Math.min(100, totalPacks);
+
+                // Store full results for download
+                fullResultsData = result.packs.map(pack => {
+                    return `Pack ${pack.packNumber}:\n` +
+                        pack.items.map(item =>
+                            `${item.id},${item.length},${item.quantity},${item.weight}`
+                        ).join('\n') +
+                        `\nPack Length: ${pack.packLength}, Pack Weight: ${pack.totalWeight.toFixed(2)}`;
+                });
+
+                let summaryHtml = `
+                    <div style="background: #e8f5e8; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                        <strong>📊 Summary:</strong><br>
+                        • Total Packs: <strong>${totalPacks.toLocaleString()}</strong><br>
+                        • Strategy: <strong>${result.metrics.strategyUsed}</strong><br>
+                        • Sorting Time: <strong>${result.metrics.sortingTimeMs.toFixed(3)}ms</strong><br>
+                        • Packing Time: <strong>${result.metrics.packingTimeMs.toFixed(3)}ms</strong><br>
+                        • Total Time: <strong>${result.metrics.totalTimeMs.toFixed(3)}ms</strong><br>
+                        • JS Processing Time: <strong>${jsProcessingTime.toFixed(2)}ms</strong><br>
+                        • Input Items: <strong>${result.metrics.totalItems.toLocaleString()}</strong><br>
+                        • Utilization: <strong>${result.metrics.utilizationPercent.toFixed(2)}%</strong><br>
+                        • Showing: <strong>First ${packsToShow} pack${packsToShow !== 1 ? 's' : ''}</strong>
+                    </div>
+                `;
+
+                if (totalPacks > 100) {
+                    summaryHtml += `
+                        <div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+                            📄 <strong>Note:</strong> Showing first 100 of ${totalPacks.toLocaleString()} packs.
+                            <button id="downloadResultsButton" style="margin-left: 10px; padding: 5px 10px; font-size: 14px;">📥 Download Full Results</button>
+                        </div>
+                    `;
+                }
+
+                summaryHtml += `<h3>📦 Pack Details:</h3>`;
+                resultsEl.innerHTML = summaryHtml;
+
+                // Show pack details
+                for (let i = 0; i < packsToShow; i++) {
+                    const pack = result.packs[i];
+                    const packDiv = document.createElement('div');
+                    packDiv.className = 'pack';
+
+                    let packContent = `<strong>Pack ${pack.packNumber}:</strong><br>`;
+                    pack.items.forEach(item => {
+                        packContent += `${item.id},${item.length},${item.quantity},${item.weight}<br>`;
+                    });
+                    packContent += `Pack Length: ${pack.packLength}, Pack Weight: ${pack.totalWeight.toFixed(2)}`;
+
+                    packDiv.innerHTML = packContent;
+                    resultsEl.appendChild(packDiv);
+                }
+
+                // Add event listener for download results button if it exists
+                const downloadResultsBtn = document.getElementById('downloadResultsButton');
+                if (downloadResultsBtn) {
+                    downloadResultsBtn.addEventListener('click', downloadResults);
+                }
+
+                statusEl.textContent = `✅ Success! Created ${totalPacks.toLocaleString()} packs in ${jsProcessingTime.toFixed(2)}ms`;
+                statusEl.className = 'status success';
+            } else {
+                resultsEl.innerHTML = `
+                    <div style="background: #fff3cd; padding: 15px; border-radius: 4px;">
+                        ⚠️ No packs were created or API returned unexpected format.
+                    </div>
+                `;
+                statusEl.textContent = '⚠️ Completed (no packs created)';
+                statusEl.className = 'status error';
+            }
+        }
+
+        // Error handling
+        function handleApiError(error, step = 3) {
+            const errorEl = document.getElementById('error');
+            const statusEl = document.getElementById('status');
+
+            errorEl.innerHTML = `<div class="error">❌ <strong>API Error:</strong> ${error.message}</div>`;
+            statusEl.textContent = '❌ Processing failed';
+            statusEl.className = 'status error';
+
+            // Mark current step as error
+            updateStep(step, 'error');
+        }
+
+        // Run packing based on selected mode
+        async function runPacking() {
+            const processingMode = document.getElementById('packingMode').value;
+
+            if (processingMode === 'async') {
+                await runAsyncPacking();
+            } else {
+                await runSyncPacking();
+            }
+        }
+
+        // Synchronous packing
+        async function runSyncPacking() {
+            const statusEl = document.getElementById('status');
+            const errorEl = document.getElementById('error');
+            const resultsEl = document.getElementById('results');
+            const runButton = document.getElementById('runButton');
+
+            statusEl.innerHTML = '<div class="spinner"></div>Processing...';
+            statusEl.className = 'status loading';
+            errorEl.innerHTML = '';
+            resultsEl.innerHTML = '';
+            runButton.disabled = true;
+
+            showProcessingSteps();
+            updateProgress(0);
+
+            try {
+                // Step 1-2: Validate and prepare data
+                updateStep(1, 'active');
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                const requestData = prepareApiRequest();
+                updateStep(1, 'complete');
+                updateStep(2, 'complete');
+                updateProgress(30);
+
+                // Step 3-4: Call API
+                updateStep(3, 'active');
+                statusEl.innerHTML = '<div class="spinner"></div>Calling API...';
+
+                const startTime = performance.now();
+                const response = await fetch(`${apiConfig.baseUrl}/pack`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                updateStep(3, 'complete');
+                updateProgress(70);
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+
+                updateStep(4, 'active');
+                const result = await response.json();
+                const endTime = performance.now();
+
+                updateStep(4, 'complete');
+                updateStep(5, 'complete');
+                updateProgress(100);
+
+                // Display results
+                displayApiResults(result, endTime - startTime);
+
+            } catch (error) {
+                handleApiError(error);
+            } finally {
+                runButton.disabled = false;
+                setTimeout(hideProcessingSteps, 3000);
+            }
+        }
+
+        // Asynchronous packing with polling
+        async function runAsyncPacking() {
+            const statusEl = document.getElementById('status');
+            const errorEl = document.getElementById('error');
+            const runButton = document.getElementById('runButton');
+
+            statusEl.innerHTML = '<div class="spinner"></div>Starting async job...';
+            statusEl.className = 'status loading';
+            errorEl.innerHTML = '';
+            runButton.disabled = true;
+
+            showProcessingSteps();
+            updateProgress(0);
+
+            try {
+                // Step 1-2: Validate and prepare data
+                updateStep(1, 'active');
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                const requestData = prepareApiRequest();
+                updateStep(1, 'complete');
+                updateStep(2, 'complete');
+                updateProgress(30);
+
+                // Step 3: Start async job
+                updateStep(3, 'active');
+                statusEl.innerHTML = '<div class="spinner"></div>Starting async job...';
+
+                const response = await fetch(`${apiConfig.baseUrl}/pack/async`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+
+                const jobResponse = await response.json();
+                currentJobId = jobResponse.jobId;
+
+                updateStep(3, 'complete');
+                updateProgress(50);
+
+                // Show async controls and start polling
+                showAsyncJobStatus();
+                startJobPolling();
+
+                statusEl.textContent = `✅ Async job started: ${currentJobId}`;
+                statusEl.className = 'status success';
+
+            } catch (error) {
+                handleApiError(error);
+            } finally {
+                // Don't re-enable run button here - it will be enabled when job completes or fails
+            }
+        }
+
+        // Start job polling
+        function startJobPolling() {
+            if (jobPollingInterval) clearInterval(jobPollingInterval);
+
+            jobPollingInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${apiConfig.baseUrl}/pack/status/${currentJobId}`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                    const status = await response.json();
+                    updateJobStatus(status);
+
+                    if (status.status === 'Completed' || status.status === 'Failed') {
+                        clearInterval(jobPollingInterval);
+                        if (status.status === 'Completed') {
+                            await fetchJobResult();
+                        } else {
+                            throw new Error(status.errorMessage || 'Job failed');
+                        }
+                    }
+                } catch (error) {
+                    clearInterval(jobPollingInterval);
+                    handleApiError(error);
+                    document.getElementById('runButton').disabled = false;
+                }
+            }, 2000); // Poll every 2 seconds
+        }
+
+        // Update job status during polling
+        function updateJobStatus(status) {
+            document.getElementById('jobStatusText').textContent = status.status;
+            document.getElementById('jobProgressFill').style.width = `${status.progress || 0}%`;
+
+            if (status.estimatedTimeRemaining) {
+                const eta = new Date(Date.now() + status.estimatedTimeRemaining * 1000);
+                document.getElementById('jobEta').textContent = eta.toLocaleTimeString();
+            }
+
+            // Update progress bar and steps
+            updateProgress(status.progress || 0);
+            if (status.progress >= 70) {
+                updateStep(4, 'complete');
+                updateStep(5, 'active');
+            } else if (status.progress >= 30) {
+                updateStep(3, 'complete');
+                updateStep(4, 'active');
+            }
+        }
+
+        // Fetch final job result
+        async function fetchJobResult() {
+            try {
+                const response = await fetch(`${apiConfig.baseUrl}/pack/result/${currentJobId}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const result = await response.json();
+                displayApiResults(result, 0); // No JS processing time for async
+
+                document.getElementById('runButton').disabled = false;
+                document.getElementById('status').textContent = '✅ Async job completed successfully!';
+                document.getElementById('status').className = 'status success';
+                updateStep(5, 'complete');
+                updateProgress(100);
+            } catch (error) {
+                handleApiError(error);
+            } finally {
+                setTimeout(hideProcessingSteps, 3000);
+            }
+        }
+
+        // Cancel current job
+        async function cancelCurrentJob() {
+            if (!currentJobId) return;
+
+            try {
+                await fetch(`${apiConfig.baseUrl}/pack/job/${currentJobId}`, { method: 'DELETE' });
+                clearInterval(jobPollingInterval);
+                hideAsyncJobStatus();
+                document.getElementById('runButton').disabled = false;
+                document.getElementById('status').textContent = '🚫 Job cancelled';
+                document.getElementById('status').className = 'status error';
+                currentJobId = null;
+            } catch (error) {
+                console.error('Cancel job error:', error);
+            } finally {
+                setTimeout(hideProcessingSteps, 3000);
+            }
+        }
+
+        // Benchmark functions (adapted for API)
+        async function runSingleBenchmark() {
+            const benchStatusEl = document.getElementById('benchmarkStatus');
+            const runBenchButton = document.getElementById('runBenchmarkButton');
+            const runFullBenchButton = document.getElementById('runFullBenchmarkButton');
+
+            benchStatusEl.innerHTML = '<div class="spinner"></div>Running benchmark...';
+            benchStatusEl.className = 'status loading';
+            runBenchButton.disabled = true;
+            runFullBenchButton.disabled = true;
+
+            try {
+                const size = parseInt(document.getElementById('benchSize').value);
+                const sortOrder = parseInt(document.getElementById('benchSortOrder').value);
+                const strategy = parseInt(document.getElementById('benchStrategy').value);
+                const threads = parseInt(document.getElementById('benchThreads').value);
+
+                const startTime = performance.now();
+                const response = await fetch(`${apiConfig.baseUrl}/benchmark`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        itemCount: size,
+                        sortOrder: ['NATURAL', 'SHORT_TO_LONG', 'LONG_TO_SHORT'][sortOrder],
+                        strategyType: strategy === 0 ? 'BLOCKING' : 'PARALLEL',
+                        threadCount: threads
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+                const jsTime = performance.now() - startTime;
+
+                // Add result to table
+                addBenchmarkResult({
+                    ...result,
+                    jsProcessingTime: jsTime
+                });
+
+                benchStatusEl.textContent = `✅ Benchmark completed in ${jsTime.toFixed(2)}ms`;
+                benchStatusEl.className = 'status success';
+
+            } catch (e) {
+                benchStatusEl.innerHTML = `<div class="error">❌ <strong>Error:</strong> ${e.message}</div>`;
+                benchStatusEl.className = 'status error';
+                console.error("Benchmark error:", e);
+            } finally {
+                runBenchButton.disabled = false;
+                runFullBenchButton.disabled = false;
+            }
+        }
+
+        async function runFullBenchmark() {
+            const benchStatusEl = document.getElementById('benchmarkStatus');
+            const runBenchButton = document.getElementById('runBenchmarkButton');
+            const runFullBenchButton = document.getElementById('runFullBenchmarkButton');
+
+            benchStatusEl.innerHTML = '<div class="spinner"></div>Running full benchmark suite...';
+            benchStatusEl.className = 'status loading';
+            runBenchButton.disabled = true;
+            runFullBenchButton.disabled = true;
+
+            try {
+                // Clear previous results
+                benchmarkResults = [];
+                document.getElementById('benchmarkResults').innerHTML = '';
+
+                const sizes = [10000, 100000, 1000000, 5000000, 10000000, 20000000];
+                const sortOrders = [0, 1, 2]; // Natural, Short-to-Long, Long-to-Short
+                const strategies = [0, 1]; // Blocking, Parallel
+
+                let totalTests = sizes.length * sortOrders.length * strategies.length;
+                let completedTests = 0;
+
+                for (const size of sizes) {
+                    for (const sortOrder of sortOrders) {
+                        for (const strategy of strategies) {
+                            // Skip thread variations for blocking strategy
+                            const threads = strategy === 0 ? 1 : 4;
+
+                            benchStatusEl.innerHTML = `<div class="spinner"></div>Running benchmark ${completedTests + 1}/${totalTests}: ${size.toLocaleString()} items, ${strategy === 0 ? 'Blocking' : 'Parallel'}, ${sortOrder === 0 ? 'Natural' : sortOrder === 1 ? 'Short-to-Long' : 'Long-to-Short'}`;
+
+                            // Add a small delay to allow UI updates
+                            await new Promise(resolve => setTimeout(resolve, 50));
+
+                            const startTime = performance.now();
+                            const response = await fetch(`${apiConfig.baseUrl}/benchmark`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    itemCount: size,
+                                    sortOrder: ['NATURAL', 'SHORT_TO_LONG', 'LONG_TO_SHORT'][sortOrder],
+                                    strategyType: strategy === 0 ? 'BLOCKING' : 'PARALLEL',
+                                    threadCount: threads
+                                })
+                            });
+
+                            if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}`);
+                            }
+
+                            const result = await response.json();
+                            const jsTime = performance.now() - startTime;
+
+                            addBenchmarkResult({
+                                ...result,
+                                jsProcessingTime: jsTime
+                            });
+
+                            completedTests++;
+                        }
+                    }
+                }
+
+                benchStatusEl.textContent = `✅ Full benchmark suite completed (${totalTests} tests)`;
+                benchStatusEl.className = 'status success';
+
+            } catch (e) {
+                benchStatusEl.innerHTML = `<div class="error">❌ <strong>Error:</strong> ${e.message}</div>`;
+                benchStatusEl.className = 'status error';
+                console.error("Benchmark error:", e);
+            } finally {
+                runBenchButton.disabled = false;
+                runFullBenchButton.disabled = false;
+            }
+        }
+
+        function addBenchmarkResult(result) {
+            // Add to results array
+            benchmarkResults.push(result);
+
+            // Add to table
+            const tbody = document.getElementById('benchmarkResults');
+            const row = document.createElement('tr');
+
+            row.innerHTML = `
+                <td>${result.itemCount.toLocaleString()}</td>
+                <td>${result.strategyUsed}</td>
+                <td>${result.strategyUsed === 'PARALLEL' ? result.threadCount : '-'}</td>
+                <td>${result.sortOrder}</td>
+                <td>${result.sortingTimeMs.toFixed(3)}</td>
+                <td>${result.packingTimeMs.toFixed(3)}</td>
+                <td>${result.totalTimeMs.toFixed(3)}</td>
+                <td>${Math.round(result.itemCount / (result.totalTimeMs / 1000)).toLocaleString()}</td>
+                <td>${result.packCount.toLocaleString()}</td>
+                <td>${result.utilizationPercent.toFixed(1)}%</td>
+            `;
+
+            tbody.appendChild(row);
+        }
+
+        function exportBenchmarkResults() {
+            if (benchmarkResults.length === 0) {
+                alert("No results to export!");
+                return;
+            }
+
+            let csv = "Size,Strategy,Threads,Sort Order,Sort Time (ms),Pack Time (ms),Total Time (ms),Items/sec,Packs,Utilization %\n";
+            benchmarkResults.forEach(res => {
+                csv += `${res.itemCount},${res.strategyUsed},${res.strategyUsed === 'PARALLEL' ? res.threadCount : "-"},${res.sortOrder},`;
+                csv += `${res.sortingTimeMs.toFixed(3)},${res.packingTimeMs.toFixed(3)},${res.totalTimeMs.toFixed(3)},`;
+                csv += `${Math.round(res.itemCount / (res.totalTimeMs / 1000))},${res.packCount},${res.utilizationPercent.toFixed(1)}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pack_benchmark_${new Date().toISOString().slice(0, 10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Tab switching
+        function switchTab(tabName) {
+            if (tabName === 'packing') {
+                document.getElementById('packingSection').style.display = 'flex';
+                document.getElementById('benchmarkSection').style.display = 'none';
+                document.getElementById('packingTab').classList.add('active');
+                document.getElementById('benchmarkTab').classList.remove('active');
+            } else {
+                document.getElementById('packingSection').style.display = 'none';
+                document.getElementById('benchmarkSection').style.display = 'block';
+                document.getElementById('packingTab').classList.remove('active');
+                document.getElementById('benchmarkTab').classList.add('active');
+            }
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            // Test API connection on load
+            testApiConnection();
+
+            // Set up event listeners
+            document.getElementById('testConnectionButton').addEventListener('click', testApiConnection);
+            document.getElementById('apiBaseUrl').addEventListener('change', testApiConnection);
+            document.getElementById('runButton').addEventListener('click', runPacking);
+            document.getElementById('generateButton').addEventListener('click', generateTestData);
+            document.getElementById('downloadInputButton').addEventListener('click', downloadInputData);
+            document.getElementById('cancelJobButton').addEventListener('click', cancelCurrentJob);
+
+            // Benchmark tab event listeners
+            document.getElementById('packingTab').addEventListener('click', () => switchTab('packing'));
+            document.getElementById('benchmarkTab').addEventListener('click', () => switchTab('benchmark'));
+            document.getElementById('runBenchmarkButton').addEventListener('click', runSingleBenchmark);
+            document.getElementById('runFullBenchmarkButton').addEventListener('click', runFullBenchmark);
+            document.getElementById('exportBenchmarkButton').addEventListener('click', exportBenchmarkResults);
+
+            // Processing mode change handler
+            document.querySelectorAll('input[name="processingMode"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    if (e.target.value === 'sync') {
+                        hideAsyncJobStatus();
+                        if (jobPollingInterval) {
+                            clearInterval(jobPollingInterval);
+                        }
+                    }
+                });
+            });
+
+            // Initialize with packing tab active
+            switchTab('packing');
+        });
+    </script>
+</body>
+</html>
