@@ -1,12 +1,186 @@
 #pragma once
 #ifdef __EMSCRIPTEN__
 #include <emscripten/bind.h>
+#include <emscripten/val.h>
+#include <emscripten/html5.h>
 #include "item.h"
 #include "pack.h"
 #include "pack_planner.h"
 #include "benchmark.h"
 #include <vector>
 #include <string>
+#include <chrono>
+#include <cmath>
+#include <random>
+#include <algorithm>
+
+// Profiler results structure
+struct ProfilerResults {
+    double cpu_score;
+    double memory_bandwidth_mbps;
+    double network_latency_ms;
+    double network_bandwidth_mbps;
+    double battery_level;
+    bool is_charging;
+    std::string recommendation;
+    double confidence_score;
+};
+
+class SystemProfiler {
+private:
+    std::mt19937 rng;
+
+    // CPU benchmarking using mathematical operations
+    double benchmarkCPU() {
+        auto start = std::chrono::high_resolution_clock::now();
+
+        // Mathematical operations benchmark
+        double result = 0.0;
+        const int iterations = 1000000;
+
+        for (int i = 0; i < iterations; ++i) {
+            double x = static_cast<double>(i) / 1000.0;
+            result += std::sin(x) * std::cos(x) + std::sqrt(x + 1.0) + std::log(x + 1.0);
+        }
+
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+        // Calculate operations per second and normalize to a score (higher is better)
+        double ops_per_second = (iterations * 4.0) / (duration.count() / 1000000.0); // 4 ops per iteration
+        return ops_per_second / 1000000.0; // Normalize to millions of ops per second
+    }
+
+    // Memory bandwidth testing
+    double benchmarkMemoryBandwidth() {
+        const size_t buffer_size = 64 * 1024 * 1024; // 64MB
+        const int iterations = 10;
+
+        std::vector<uint8_t> src(buffer_size);
+        std::vector<uint8_t> dst(buffer_size);
+
+        // Fill source buffer with random data
+        std::uniform_int_distribution<uint8_t> dist(0, 255);
+        for (size_t i = 0; i < buffer_size; ++i) {
+            src[i] = dist(rng);
+        }
+
+        auto start = std::chrono::high_resolution_clock::now();
+
+        for (int i = 0; i < iterations; ++i) {
+            std::copy(src.begin(), src.end(), dst.begin());
+        }
+
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
+        // Calculate bandwidth in MB/s
+        double total_bytes = buffer_size * iterations;
+        double seconds = duration.count() / 1000000.0;
+        return (total_bytes / (1024 * 1024)) / seconds;
+    }
+
+    // Network latency test (using fetch to a known endpoint)
+    emscripten::val testNetworkLatency() {
+        return emscripten::val::global("Promise").call<emscripten::val>("resolve", emscripten::val(50.0)); // Placeholder
+    }
+
+    // Battery status assessment
+    emscripten::val getBatteryInfo() {
+        // This will be handled in JavaScript and passed back
+        return emscripten::val::object();
+    }
+
+public:
+    SystemProfiler() : rng(std::chrono::steady_clock::now().time_since_epoch().count()) {}
+
+    // Main profiling method
+    emscripten::val profileSystem() {
+        ProfilerResults results;
+
+        // CPU benchmarking
+        results.cpu_score = benchmarkCPU();
+
+        // Memory bandwidth testing
+        results.memory_bandwidth_mbps = benchmarkMemoryBandwidth();
+
+        // These will be filled by JavaScript callbacks
+        results.network_latency_ms = 0.0;
+        results.network_bandwidth_mbps = 0.0;
+        results.battery_level = 1.0;
+        results.is_charging = true;
+
+        // Make recommendation based on CPU and memory performance
+        makeRecommendation(results);
+
+        // Convert to JavaScript object
+        emscripten::val jsResults = emscripten::val::object();
+        jsResults.set("cpuScore", results.cpu_score);
+        jsResults.set("memoryBandwidthMbps", results.memory_bandwidth_mbps);
+        jsResults.set("networkLatencyMs", results.network_latency_ms);
+        jsResults.set("networkBandwidthMbps", results.network_bandwidth_mbps);
+        jsResults.set("batteryLevel", results.battery_level);
+        jsResults.set("isCharging", results.is_charging);
+        jsResults.set("recommendation", results.recommendation);
+        jsResults.set("confidenceScore", results.confidence_score);
+
+        return jsResults;
+    }
+
+    // Stress test for more intensive profiling
+    emscripten::val stressTest(int duration_seconds) {
+        auto start = std::chrono::high_resolution_clock::now();
+        auto end_time = start + std::chrono::seconds(duration_seconds);
+
+        double cpu_total = 0.0;
+        double memory_total = 0.0;
+        int iterations = 0;
+
+        while (std::chrono::high_resolution_clock::now() < end_time) {
+            cpu_total += benchmarkCPU();
+            memory_total += benchmarkMemoryBandwidth();
+            iterations++;
+        }
+
+        emscripten::val results = emscripten::val::object();
+        results.set("avgCpuScore", cpu_total / iterations);
+        results.set("avgMemoryBandwidth", memory_total / iterations);
+        results.set("iterations", iterations);
+        results.set("duration", duration_seconds);
+
+        return results;
+    }
+
+private:
+    void makeRecommendation(ProfilerResults& results) {
+        // Simple scoring algorithm
+        double cpu_weight = 0.4;
+        double memory_weight = 0.3;
+        double network_weight = 0.2;
+        double battery_weight = 0.1;
+
+        // Normalize scores (these thresholds would be calibrated based on real data)
+        double cpu_normalized = std::min(results.cpu_score / 10.0, 1.0); // Assume 10 MOPS is excellent
+        double memory_normalized = std::min(results.memory_bandwidth_mbps / 10000.0, 1.0); // 10GB/s is excellent
+        double network_normalized = 1.0; // Will be updated when network tests are implemented
+        double battery_normalized = results.battery_level;
+
+        double overall_score = cpu_normalized * cpu_weight +
+                              memory_normalized * memory_weight +
+                              network_normalized * network_weight +
+                              battery_normalized * battery_weight;
+
+        results.confidence_score = overall_score;
+
+        if (overall_score > 0.7) {
+            results.recommendation = "CLIENT_PREFERRED";
+        } else if (overall_score > 0.4) {
+            results.recommendation = "HYBRID";
+        } else {
+            results.recommendation = "SERVER_PREFERRED";
+        }
+    }
+};
 
 class PackPlanner {
 public:
@@ -123,6 +297,11 @@ EMSCRIPTEN_BINDINGS(pack_planner_module) {
         .function("packItems", &PackPlanner::packItems)
         .function("getPlanningStats", &PackPlanner::getPlanningStats)
         .function("runBenchmark", &PackPlanner::runBenchmark);
+
+    emscripten::class_<SystemProfiler>("SystemProfiler")
+        .constructor<>()
+        .function("profileSystem", &SystemProfiler::profileSystem)
+        .function("stressTest", &SystemProfiler::stressTest);
 
     emscripten::register_vector<std::string>("VectorString");
 

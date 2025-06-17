@@ -19,10 +19,11 @@ if(EMSCRIPTEN)
         "-s ALLOW_MEMORY_GROWTH=1"
         "-s EXPORTED_RUNTIME_METHODS=[\"ccall\",\"cwrap\"]"
         "-s EXPORT_ES6=1"
+        "-s MODULARIZE=1"
         "-s ASSERTIONS"
         "-s PTHREAD_POOL_SIZE=8"
         "-s INITIAL_MEMORY=128MB"
-        "-s --bind"
+        "--bind"
         "-O3"
     )
     string(REPLACE ";" " " EMSCRIPTEN_FLAGS_STR "${EMSCRIPTEN_FLAGS}")
@@ -155,7 +156,7 @@ if(WASM_BUILD)
     target_include_directories(${PROJECT_NAME}_wasm PRIVATE ${PROJECT_SOURCE_DIR}/include)
     target_link_libraries(${PROJECT_NAME}_wasm ${PROJECT_NAME}_LIB)
 
-    set(FILES_TO_COPY server.py index.html dashboard.html)
+    set(FILES_TO_COPY server.py index.html dashboard.html wasm_profiler.html)
     foreach(f ${FILES_TO_COPY})
         add_custom_command(
             TARGET ${PROJECT_NAME}_wasm POST_BUILD
