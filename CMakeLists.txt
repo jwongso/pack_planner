@@ -156,7 +156,7 @@ if(WASM_BUILD)
     target_include_directories(${PROJECT_NAME}_wasm PRIVATE ${PROJECT_SOURCE_DIR}/include)
     target_link_libraries(${PROJECT_NAME}_wasm ${PROJECT_NAME}_LIB)
 
-    set(FILES_TO_COPY server.py index.html dashboard.html wasm_profiler.html)
+    set(FILES_TO_COPY server.py index.html dashboard.html wasm_profiler.html styles.css app.js)
     foreach(f ${FILES_TO_COPY})
         add_custom_command(
             TARGET ${PROJECT_NAME}_wasm POST_BUILD

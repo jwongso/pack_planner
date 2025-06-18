@@ -3,310 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WASM Pack Planner</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-
-        .container {
-            display: flex;
-            gap: 20px;
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .input-section, .output-section {
-            flex: 1;
-        }
-
-        .input-group {
-            margin-bottom: 15px;
-        }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-
-        .input-group input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        .input-group select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        .input-group small {
-            color: #666;
-            font-size: 0.9em;
-            margin-top: 5px;
-            display: block;
-        }
-
-        textarea {
-            width: 100%;
-            height: 180px;
-            font-family: 'Courier New', monospace;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            resize: vertical;
-        }
-
-        button {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            margin: 10px 0;
-            cursor: pointer;
-            border-radius: 4px;
-            font-size: 16px;
-            transition: background 0.3s;
-        }
-
-        button:hover {
-            background: #2980b9;
-        }
-
-        button:disabled {
-            background: #bdc3c7;
-            cursor: not-allowed;
-        }
-
-        .pack {
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 4px;
-            background: #f9f9f9;
-            font-family: monospace;
-            white-space: pre-wrap;
-        }
-
-        .error {
-            color: #e74c3c;
-            background: #fadbd8;
-            padding: 10px;
-            border-radius: 4px;
-            margin: 10px 0;
-        }
-
-        .success {
-            color: #27ae60;
-            font-weight: bold;
-        }
-
-        .status {
-            padding: 10px;
-            border-radius: 4px;
-            margin: 10px 0;
-            font-weight: bold;
-        }
-
-        .status.loading {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-            vertical-align: middle;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background-color: #f0f0f0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 10px 0;
-            display: none;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #3498db, #2ecc71);
-            width: 0%;
-            transition: width 0.3s ease;
-            border-radius: 10px;
-        }
-
-        .processing-steps {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            padding: 15px;
-            margin: 10px 0;
-            display: none;
-        }
-
-        .processing-step {
-            display: flex;
-            align-items: center;
-            margin: 5px 0;
-            padding: 5px 0;
-        }
-
-        .step-icon {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            margin-right: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .step-pending {
-            background: #e9ecef;
-            color: #6c757d;
-        }
-
-        .step-active {
-            background: #3498db;
-            color: white;
-        }
-
-        .step-complete {
-            background: #28a745;
-            color: white;
-        }
-
-        .step-error {
-            background: #dc3545;
-            color: white;
-        }
-
-        h1 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 30px;
-        }
-
-        h2 {
-            color: #34495e;
-            border-bottom: 2px solid #ecf0f1;
-            padding-bottom: 10px;
-        }
-
-        /* Benchmark styles */
-        .benchmark-section {
-            display: none;
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .benchmark-controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .benchmark-controls .input-group {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .benchmark-results {
-            overflow-x: auto;
-        }
-
-        .benchmark-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-
-        .benchmark-table th, .benchmark-table td {
-            border: 1px solid #ddd;
-            padding: 8px 12px;
-            text-align: left;
-        }
-
-        .benchmark-table th {
-            background-color: #f2f2f2;
-            position: sticky;
-            top: 0;
-        }
-
-        .benchmark-table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
-        .benchmark-table tr:hover {
-            background-color: #f0f7ff;
-        }
-
-        .tab-buttons {
-            display: flex;
-            margin-bottom: 20px;
-        }
-
-        .tab-button {
-            padding: 10px 20px;
-            background: #f0f0f0;
-            border: none;
-            border-radius: 4px 4px 0 0;
-            cursor: pointer;
-            margin-right: 5px;
-        }
-
-        .tab-button.active {
-            background: #3498db;
-            color: white;
-        }
-
-        .chart-container {
-            height: 400px;
-            margin-top: 20px;
-        }
-    </style>
+    <title>Pack Planner - Adaptive Processing</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>🚀 WASM Pack Planner</h1>
+    <h1>🚀 Pack Planner - Adaptive Processing</h1>
+
+    <!-- Processing Mode Controls -->
+    <div class="processing-mode-controls">
+        <h3>🔧 Processing Mode</h3>
+        <div class="mode-selection">
+            <label>
+                <input type="radio" name="processingMode" value="auto" checked>
+                🤖 Auto (Profiler-based decision)
+            </label>
+            <label>
+                <input type="radio" name="processingMode" value="wasm">
+                ⚡ Force WASM (Client-side)
+            </label>
+            <label>
+                <input type="radio" name="processingMode" value="api">
+                🌐 Force Web API (Server-side)
+            </label>
+        </div>
+        <div id="currentMode" class="current-mode">
+            Current Mode: <span id="currentModeText">Detecting...</span>
+        </div>
+        <div id="profilerResults" class="profiler-results" style="display: none;">
+            <h4>System Profile:</h4>
+            <div id="profilerOutput"></div>
+        </div>
+    </div>
+
+    <!-- API Configuration Section -->
+    <div class="api-config" id="apiConfig" style="display: none;">
+        <strong>🌐 API Configuration:</strong>
+        <div class="api-controls">
+            <label>
+                Base URL:
+                <input type="text" id="apiBaseUrl" value="http://localhost:5135/api">
+            </label>
+            <button id="testConnectionButton">🔗 Test Connection</button>
+            <span id="connectionStatus"></span>
+        </div>
+    </div>
 
     <div class="tab-buttons">
         <button id="packingTab" class="tab-button active">Packing Tool</button>
@@ -355,6 +95,36 @@
                 <small>Range: 1 to 20,000,000 items</small>
             </div>
 
+            <!-- Async Controls Section (for API mode) -->
+            <div class="async-controls" id="asyncControls" style="display: none;">
+                <h3>🔄 Processing Mode</h3>
+                <div class="input-group">
+                    <label for="packingMode">Packing Mode:</label>
+                    <select id="packingMode">
+                        <option value="sync">Synchronous</option>
+                        <option value="async">Asynchronous</option>
+                    </select>
+                    <small>Use async mode for large datasets (&gt;10,000 items)</small>
+                </div>
+
+                <!-- Async Job Status (initially hidden) -->
+                <div id="asyncJobStatus" style="display: none;">
+                    <div class="job-status">
+                        <strong>Job Status:</strong>
+                        <span id="jobStatusText">-</span>
+                        <button id="cancelJobButton">❌ Cancel</button>
+                    </div>
+                    <div class="job-progress">
+                        <div class="job-progress-fill" id="jobProgressFill"></div>
+                    </div>
+                    <div class="job-details">
+                        <span id="jobDetails">Job ID: <span id="currentJobId">-</span> |
+                        Started: <span id="jobStartTime">-</span> |
+                        ETA: <span id="jobEta">-</span></span>
+                    </div>
+                </div>
+            </div>
+
             <h3>Items (Format: [id, length, quantity, weight])</h3>
             <textarea id="itemsInput" placeholder="Enter items as JSON array...">[
     [1, 100, 5, 2.5],
@@ -371,7 +141,7 @@
             <button id="generateButton">🎲 Generate Test Data</button>
             <button id="downloadInputButton" disabled>📥 Download Full Input Data</button>
 
-            <div id="status" class="status">Loading WASM module...</div>
+            <div id="status" class="status">Initializing system...</div>
 
             <div class="progress-bar" id="progressBar">
                 <div class="progress-fill" id="progressFill"></div>
@@ -388,18 +158,14 @@
                 </div>
                 <div class="processing-step" id="step3">
                     <div class="step-icon step-pending" id="step3Icon">3</div>
-                    <span>Initializing WASM planner...</span>
+                    <span>Initializing processor...</span>
                 </div>
                 <div class="processing-step" id="step4">
                     <div class="step-icon step-pending" id="step4Icon">4</div>
-                    <span>Sorting items...</span>
+                    <span>Processing items...</span>
                 </div>
                 <div class="processing-step" id="step5">
                     <div class="step-icon step-pending" id="step5Icon">5</div>
-                    <span>Packing items...</span>
-                </div>
-                <div class="processing-step" id="step6">
-                    <div class="step-icon step-pending" id="step6Icon">6</div>
                     <span>Generating results...</span>
                 </div>
             </div>
@@ -411,6 +177,7 @@
             <div id="error"></div>
         </div>
     </div>
+
     <div class="benchmark-section" id="benchmarkSection">
         <h2>Performance Benchmark</h2>
 
@@ -452,7 +219,7 @@
 
         <button id="runBenchmarkButton">🔍 Run Benchmark</button>
         <button id="runFullBenchmarkButton">📊 Run Full Benchmark Suite</button>
-        <button id="exportBenchmarkButton" style="margin-left: 10px;">📊 Export CSV</button>
+        <button id="exportBenchmarkButton">📊 Export CSV</button>
 
         <div id="benchmarkStatus" class="status"></div>
 
@@ -470,6 +237,7 @@
                         <th>Items/sec</th>
                         <th>Packs</th>
                         <th>Utilization %</th>
+                        <th>Processing Mode</th>
                     </tr>
                 </thead>
                 <tbody id="benchmarkResults">
@@ -483,623 +251,6 @@
         </div>
     </div>
 
-    <script>
-        // Global reference to WASM module
-        let Module = null;
-
-        // Store full datasets for download
-        let fullInputData = null;
-        let fullResultsData = null;
-
-        // Download functions (make them globally accessible)
-        function downloadInputData() {
-            if (!fullInputData || fullInputData.length === 0) {
-                alert('No full input data available to download');
-                return;
-            }
-
-            const jsonData = JSON.stringify(fullInputData, null, 2);
-            const blob = new Blob([jsonData], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `pack_planner_input_${fullInputData.length}_items.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function downloadResults() {
-            if (!fullResultsData || fullResultsData.length === 0) {
-                alert('No full results data available to download');
-                return;
-            }
-
-            const textData = fullResultsData.join('\n\n' + '='.repeat(50) + '\n\n');
-            const blob = new Blob([textData], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `pack_planner_results_${fullResultsData.length}_packs.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        // Load WASM module when page loads
-        async function loadWasm() {
-            const statusEl = document.getElementById('status');
-            const errorEl = document.getElementById('error');
-            const runButton = document.getElementById('runButton');
-
-            try {
-                statusEl.textContent = 'Loading WASM module...';
-                statusEl.className = 'status loading';
-
-                // Load the WASM module - adjust path as needed
-                const wasmModule = await import('./pack_planner_wasm.js');
-                Module = await wasmModule.default();
-
-                statusEl.textContent = '✅ WASM module loaded successfully!';
-                statusEl.className = 'status success';
-                runButton.disabled = false;
-                errorEl.textContent = '';
-
-            } catch (e) {
-                statusEl.textContent = '❌ Failed to load WASM module';
-                statusEl.className = 'status error';
-                errorEl.innerHTML = `<strong>WASM Loading Error:</strong> ${e.message}<br><br>
-                    <strong>Troubleshooting:</strong><br>
-                    • Make sure pack_planner_wasm.js and pack_planner_wasm.wasm are in the same directory<br>
-                    • Serve files from a web server (not file:// protocol)<br>
-                    • Check browser console for additional errors`;
-                errorEl.className = 'error';
-                console.error("WASM loading error:", e);
-            }
-        }
-
-        // Generate test data
-        function generateTestData() {
-            const itemCount = parseInt(document.getElementById('itemCount').value);
-
-            // Validate item count
-            if (itemCount < 1 || itemCount > 20000000) {
-                document.getElementById('error').innerHTML =
-                    '<div class="error">❌ Item count must be between 1 and 20,000,000</div>';
-                return;
-            }
-
-            const sizes = [50, 100, 150, 200, 250, 300, 350, 400];
-            const items = [];
-
-            // Show progress for large datasets
-            const statusEl = document.getElementById('status');
-            const generateButton = document.getElementById('generateButton');
-
-            if (itemCount > 1000) {
-                statusEl.textContent = `🎲 Generating ${itemCount.toLocaleString()} items...`;
-                statusEl.className = 'status loading';
-                generateButton.disabled = true;
-            }
-
-            // Use setTimeout to allow UI updates for large datasets
-            const batchSize = 10000;
-            let processed = 0;
-
-            function generateBatch() {
-                const endIndex = Math.min(processed + batchSize, itemCount);
-
-                for (let i = processed; i < endIndex; i++) {
-                    const id = i + 1;
-                    const length = sizes[Math.floor(Math.random() * sizes.length)];
-                    const quantity = Math.floor(Math.random() * 10) + 1; // 1-10
-                    const weight = (Math.random() * 4.5 + 0.5).toFixed(1); // 0.5-5.0kg
-
-                    items.push([id, length, quantity, parseFloat(weight)]);
-                }
-
-                processed = endIndex;
-
-                if (processed < itemCount) {
-                    // Update progress
-                    if (itemCount > 1000) {
-                        statusEl.textContent = `🎲 Generating items... ${processed.toLocaleString()}/${itemCount.toLocaleString()}`;
-                    }
-                    // Continue with next batch
-                    setTimeout(generateBatch, 0);
-                } else {
-                    // Finished generating
-                    fullInputData = [...items]; // Store full data
-
-                    // Show only first 100 items in textarea
-                    const displayItems = items.slice(0, 100);
-                    const displayData = JSON.stringify(displayItems, null, 2);
-
-                    if (items.length > 100) {
-                        document.getElementById('itemsInput').value = displayData +
-                            `\n\n// Showing first 100 of ${items.length.toLocaleString()} items\n// Use "Download Full Input Data" to get complete dataset`;
-                    } else {
-                        document.getElementById('itemsInput').value = displayData;
-                    }
-
-                    // Enable download button if we have more than 100 items
-                    document.getElementById('downloadInputButton').disabled = items.length <= 100;
-
-                    if (itemCount > 1000) {
-                        statusEl.textContent = `✅ Generated ${itemCount.toLocaleString()} items successfully!`;
-                        statusEl.className = 'status success';
-                        generateButton.disabled = false;
-                    }
-
-                    // Clear any previous errors
-                    document.getElementById('error').innerHTML = '';
-                }
-            }
-
-            // Start generation
-            generateBatch();
-        }
-
-        // Helper functions for progress tracking
-        function updateProgress(percentage) {
-            const progressBar = document.getElementById('progressBar');
-            const progressFill = document.getElementById('progressFill');
-            progressBar.style.display = 'block';
-            progressFill.style.width = `${percentage}%`;
-        }
-
-        function updateStep(stepNumber, status) {
-            const stepIcon = document.getElementById(`step${stepNumber}Icon`);
-            stepIcon.className = `step-icon step-${status}`;
-            if (status === 'complete') {
-                stepIcon.innerHTML = '✓';
-            } else if (status === 'error') {
-                stepIcon.innerHTML = '✗';
-            } else if (status === 'active') {
-                stepIcon.innerHTML = '<div class="spinner" style="width: 12px; height: 12px; border-width: 2px; margin: 0;"></div>';
-            } else {
-                stepIcon.innerHTML = stepNumber;
-            }
-        }
-
-        function showProcessingSteps() {
-            const processingSteps = document.getElementById('processingSteps');
-            processingSteps.style.display = 'block';
-            // Reset all steps to pending
-            for (let i = 1; i <= 6; i++) {
-                updateStep(i, 'pending');
-            }
-        }
-
-        function hideProcessingSteps() {
-            const processingSteps = document.getElementById('processingSteps');
-            const progressBar = document.getElementById('progressBar');
-            processingSteps.style.display = 'none';
-            progressBar.style.display = 'none';
-        }
-
-        // Main packing function
-        async function runPacking() {
-            if (!Module) {
-                document.getElementById('error').innerHTML =
-                    '<div class="error">❌ WASM module not loaded</div>';
-                return;
-            }
-
-            const statusEl = document.getElementById('status');
-            const errorEl = document.getElementById('error');
-            const resultsEl = document.getElementById('results');
-            const runButton = document.getElementById('runButton');
-
-            // Clear previous results and show progress
-            statusEl.innerHTML = '<div class="spinner"></div>Processing...';
-            statusEl.className = 'status loading';
-            errorEl.innerHTML = '';
-            resultsEl.innerHTML = '';
-            runButton.disabled = true;
-
-            showProcessingSteps();
-            updateProgress(0);
-
-            try {
-                // Step 1: Validate inputs
-                updateStep(1, 'active');
-                statusEl.innerHTML = '<div class="spinner"></div>Validating inputs...';
-                await new Promise(resolve => setTimeout(resolve, 100)); // Allow UI update
-
-                const maxItems = parseInt(document.getElementById('maxItems').value);
-                const maxWeight = parseFloat(document.getElementById('maxWeight').value);
-                const sortOrder = parseInt(document.getElementById('sortOrder').value);
-                const strategyType = parseInt(document.getElementById('strategyType').value);
-                const threadCount = parseInt(document.getElementById('threadCount').value);
-                const itemsText = document.getElementById('itemsInput').value.trim();
-
-                // Validate inputs
-                if (maxItems <= 0) throw new Error('Max items must be positive');
-                if (maxWeight <= 0) throw new Error('Max weight must be positive');
-                if (threadCount <= 0) throw new Error('Thread count must be positive');
-                if (!itemsText) throw new Error('Items input is empty');
-
-                updateStep(1, 'complete');
-                updateProgress(15);
-
-                // Step 2: Parse item data
-                updateStep(2, 'active');
-                statusEl.innerHTML = '<div class="spinner"></div>Parsing item data...';
-                await new Promise(resolve => setTimeout(resolve, 100));
-
-                let items;
-                if (fullInputData && fullInputData.length > 0) {
-                    items = fullInputData;
-                } else {
-                    items = JSON.parse(itemsText);
-                }
-                if (!Array.isArray(items) || items.length === 0) {
-                    throw new Error('Items must be a non-empty array');
-                }
-
-                // Validate item format
-                for (let i = 0; i < items.length; i++) {
-                    const item = items[i];
-                    if (!Array.isArray(item) || item.length !== 4) {
-                        throw new Error(`Item ${i + 1} must have exactly 4 values: [id, length, quantity, weight]`);
-                    }
-                    if (item.some(val => typeof val !== 'number' || val <= 0)) {
-                        throw new Error(`Item ${i + 1} has invalid values (all must be positive numbers)`);
-                    }
-                }
-
-                updateStep(2, 'complete');
-                updateProgress(30);
-
-                // Step 3: Initialize WASM planner
-                updateStep(3, 'active');
-                statusEl.innerHTML = '<div class="spinner"></div>Initializing WASM planner...';
-                await new Promise(resolve => setTimeout(resolve, 100));
-
-                const planner = new Module.PackPlanner();
-                updateStep(3, 'complete');
-                updateProgress(45);
-
-                const startTime = performance.now();
-
-                // Step 4: Sorting items
-                updateStep(4, 'active');
-                statusEl.innerHTML = '<div class="spinner"></div>Sorting items...';
-                await new Promise(resolve => setTimeout(resolve, 50));
-
-                // Get planning stats first (this includes sorting)
-                const stats = planner.getPlanningStats(
-                    items, maxItems, maxWeight, sortOrder, strategyType, threadCount
-                );
-
-                updateStep(4, 'complete');
-                updateProgress(65);
-
-                // Step 5: Packing items
-                updateStep(5, 'active');
-                statusEl.innerHTML = '<div class="spinner"></div>Packing items...';
-                await new Promise(resolve => setTimeout(resolve, 50));
-
-                // Call WASM function to get the packed results
-                const packedResults = planner.packItems(
-                    items, maxItems, maxWeight, sortOrder, strategyType, threadCount
-                );
-
-                updateStep(5, 'complete');
-                updateProgress(85);
-
-                // Step 6: Generating results
-                updateStep(6, 'active');
-                statusEl.innerHTML = '<div class="spinner"></div>Generating results...';
-                await new Promise(resolve => setTimeout(resolve, 100));
-
-                const endTime = performance.now();
-                const processingTime = (endTime - startTime).toFixed(2);
-
-                // Display results
-                if (packedResults && packedResults.size() > 0) {
-                    // Store full results for download
-                    fullResultsData = [];
-                    for (let i = 0; i < packedResults.size(); i++) {
-                        fullResultsData.push(`Pack ${i + 1}:\n${packedResults.get(i)}`);
-                    }
-
-                    const totalPacks = packedResults.size();
-                    const packsToShow = Math.min(100, totalPacks);
-
-                    // Get strategy name from stats
-                    const strategyName = stats.strategyName;
-                    const sortingTime = stats.sortingTime.toFixed(3);
-                    const packingTime = stats.packingTime.toFixed(3);
-                    const totalTime = stats.totalTime.toFixed(3);
-                    const utilization = stats.utilizationPercent.toFixed(2);
-
-                    let summaryHtml = `
-                        <div style="background: #e8f5e8; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
-                            <strong>📊 Summary:</strong><br>
-                            • Total Packs: <strong>${totalPacks.toLocaleString()}</strong><br>
-                            • Strategy: <strong>${strategyName}</strong><br>
-                            • Sorting Time: <strong>${sortingTime}ms</strong><br>
-                            • Packing Time: <strong>${packingTime}ms</strong><br>
-                            • Total Time: <strong>${totalTime}ms</strong><br>
-                            • JS Processing Time: <strong>${processingTime}ms</strong><br>
-                            • Input Items: <strong>${items.length.toLocaleString()}</strong><br>
-                            • Utilization: <strong>${utilization}%</strong><br>
-                            • Showing: <strong>First ${packsToShow} pack${packsToShow !== 1 ? 's' : ''}</strong>
-                        </div>
-                    `;
-
-                    if (totalPacks > 100) {
-                        summaryHtml += `
-                            <div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
-                                📄 <strong>Note:</strong> Showing first 100 of ${totalPacks.toLocaleString()} packs.
-                                <button id="downloadResultsButton" style="margin-left: 10px; padding: 5px 10px; font-size: 14px;">📥 Download Full Results</button>
-                            </div>
-                        `;
-                    }
-
-                    summaryHtml += `<h3>📦 Pack Details:</h3>`;
-                    resultsEl.innerHTML = summaryHtml;
-
-                    // Show only first 100 packs
-                    for (let i = 0; i < packsToShow; i++) {
-                        const packDiv = document.createElement('div');
-                        packDiv.className = 'pack';
-                        const packData = packedResults.get(i);
-                        packDiv.innerHTML = `<strong>Pack ${i + 1}:</strong><br>${packData}`;
-                        resultsEl.appendChild(packDiv);
-                    }
-
-                    // Add event listener for download results button if it exists
-                    const downloadResultsBtn = document.getElementById('downloadResultsButton');
-                    if (downloadResultsBtn) {
-                        downloadResultsBtn.addEventListener('click', downloadResults);
-                    }
-
-                    statusEl.textContent = `✅ Success! Created ${totalPacks.toLocaleString()} packs in ${processingTime}ms`;
-                    statusEl.className = 'status success';
-                } else {
-                    resultsEl.innerHTML = `
-                        <div style="background: #fff3cd; padding: 15px; border-radius: 4px;">
-                            ⚠️ No packs were created. This might happen if:<br>
-                            • Items are too large for the constraints<br>
-                            • All items exceed the weight limit<br>
-                            • Check your max items/weight settings
-                        </div>
-                    `;
-                    statusEl.textContent = '⚠️ Completed (no packs created)';
-                    statusEl.className = 'status error';
-                }
-
-                updateStep(6, 'complete');
-                updateProgress(100);
-
-                // Clean up WASM objects
-                planner.delete();
-
-            } catch (e) {
-                // Mark current step as error
-                for (let i = 1; i <= 6; i++) {
-                    const stepIcon = document.getElementById(`step${i}Icon`);
-                    if (stepIcon.className.includes('step-active')) {
-                        updateStep(i, 'error');
-                        break;
-                    }
-                }
-
-                errorEl.innerHTML = `<div class="error">❌ <strong>Error:</strong> ${e.message}</div>`;
-                statusEl.textContent = '❌ Processing failed';
-                statusEl.className = 'status error';
-                console.error("Packing error:", e);
-            } finally {
-                runButton.disabled = false;
-                // Hide progress indicators after a delay
-                setTimeout(() => {
-                    hideProcessingSteps();
-                }, 3000);
-            }
-        }
-
-        // Add benchmark functionality
-        let benchmarkResults = [];
-
-        function switchTab(tabName) {
-            if (tabName === 'packing') {
-                document.getElementById('packingSection').style.display = 'flex';
-                document.getElementById('benchmarkSection').style.display = 'none';
-                document.getElementById('packingTab').classList.add('active');
-                document.getElementById('benchmarkTab').classList.remove('active');
-            } else {
-                document.getElementById('packingSection').style.display = 'none';
-                document.getElementById('benchmarkSection').style.display = 'block';
-                document.getElementById('packingTab').classList.remove('active');
-                document.getElementById('benchmarkTab').classList.add('active');
-            }
-        }
-
-        function exportBenchmarkResults() {
-            if (benchmarkResults.length === 0) {
-                alert("No results to export!");
-                return;
-            }
-
-            let csv = "Size,Strategy,Threads,Sort Order,Sort Time (ms),Pack Time (ms),Total Time (ms),Items/sec,Packs,Utilization %\n";
-            benchmarkResults.forEach(res => {
-                csv += `${res.size},${res.strategy},${res.numThreads || "-"},${res.order},`;
-                csv += `${res.sortingTime.toFixed(3)},${res.packingTime.toFixed(3)},${res.totalTime.toFixed(3)},`;
-                csv += `${res.itemsPerSecond},${res.totalPacks},${res.utilizationPercent.toFixed(1)}\n`;
-            });
-
-            // Trigger download
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `pack_benchmark_${new Date().toISOString().slice(0, 10)}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        async function runSingleBenchmark() {
-            if (!Module) {
-                document.getElementById('benchmarkStatus').innerHTML =
-                    '<div class="error">❌ WASM module not loaded</div>';
-                return;
-            }
-
-            const benchStatusEl = document.getElementById('benchmarkStatus');
-            const runBenchButton = document.getElementById('runBenchmarkButton');
-            const runFullBenchButton = document.getElementById('runFullBenchmarkButton');
-
-            benchStatusEl.innerHTML = '<div class="spinner"></div>Running benchmark...';
-            benchStatusEl.className = 'status loading';
-            runBenchButton.disabled = true;
-            runFullBenchButton.disabled = true;
-
-            try {
-                const size = parseInt(document.getElementById('benchSize').value);
-                const sortOrder = parseInt(document.getElementById('benchSortOrder').value);
-                const strategy = parseInt(document.getElementById('benchStrategy').value);
-                const threads = parseInt(document.getElementById('benchThreads').value);
-                threads.disabled = e.target.value === "0";
-
-                const planner = new Module.PackPlanner();
-
-                const startTime = performance.now();
-                const result = planner.runBenchmark(size, sortOrder, strategy, threads);
-                const jsTime = performance.now() - startTime;
-
-                // Add result to table
-                addBenchmarkResult(result);
-
-                benchStatusEl.textContent = `✅ Benchmark completed in ${jsTime.toFixed(2)}ms`;
-                benchStatusEl.className = 'status success';
-
-                // Clean up WASM objects
-                planner.delete();
-
-            } catch (e) {
-                benchStatusEl.innerHTML = `<div class="error">❌ <strong>Error:</strong> ${e.message}</div>`;
-                benchStatusEl.className = 'status error';
-                console.error("Benchmark error:", e);
-            } finally {
-                runBenchButton.disabled = false;
-                runFullBenchButton.disabled = false;
-            }
-        }
-
-        async function runFullBenchmark() {
-            if (!Module) {
-                document.getElementById('benchmarkStatus').innerHTML =
-                    '<div class="error">❌ WASM module not loaded</div>';
-                return;
-            }
-
-            const benchStatusEl = document.getElementById('benchmarkStatus');
-            const runBenchButton = document.getElementById('runBenchmarkButton');
-            const runFullBenchButton = document.getElementById('runFullBenchmarkButton');
-
-            benchStatusEl.innerHTML = '<div class="spinner"></div>Running full benchmark suite...';
-            benchStatusEl.className = 'status loading';
-            runBenchButton.disabled = true;
-            runFullBenchButton.disabled = true;
-
-            try {
-                // Clear previous results
-                benchmarkResults = [];
-                document.getElementById('benchmarkResults').innerHTML = '';
-
-                const sizes = [10000, 100000, 1000000, 5000000, 10000000, 20000000];
-                const sortOrders = [0, 1, 2]; // Natural, Short-to-Long, Long-to-Short
-                const strategies = [0, 1]; // Blocking, Parallel
-
-                const planner = new Module.PackPlanner();
-                let totalTests = sizes.length * sortOrders.length * strategies.length;
-                let completedTests = 0;
-
-                for (const size of sizes) {
-                    for (const sortOrder of sortOrders) {
-                        for (const strategy of strategies) {
-                            // Skip thread variations for blocking strategy
-                            const threads = strategy === 0 ? 1 : 4;
-
-                            benchStatusEl.innerHTML = `<div class="spinner"></div>Running benchmark ${completedTests + 1}/${totalTests}: ${size.toLocaleString()} items, ${strategy === 0 ? 'Blocking' : 'Parallel'}, ${sortOrder === 0 ? 'Natural' : sortOrder === 1 ? 'Short-to-Long' : 'Long-to-Short'}`;
-
-                            // Add a small delay to allow UI updates
-                            await new Promise(resolve => setTimeout(resolve, 50));
-
-                            const result = planner.runBenchmark(size, sortOrder, strategy, threads);
-                            addBenchmarkResult(result);
-
-                            completedTests++;
-                        }
-                    }
-                }
-
-                benchStatusEl.textContent = `✅ Full benchmark suite completed (${totalTests} tests)`;
-                benchStatusEl.className = 'status success';
-
-                // Clean up WASM objects
-                planner.delete();
-
-            } catch (e) {
-                benchStatusEl.innerHTML = `<div class="error">❌ <strong>Error:</strong> ${e.message}</div>`;
-                benchStatusEl.className = 'status error';
-                console.error("Benchmark error:", e);
-            } finally {
-                runBenchButton.disabled = false;
-                runFullBenchButton.disabled = false;
-            }
-        }
-
-        function addBenchmarkResult(result) {
-            // Add to results array
-            benchmarkResults.push(result);
-
-            // Add to table
-            const tbody = document.getElementById('benchmarkResults');
-            const row = document.createElement('tr');
-
-            row.innerHTML = `
-                <td>${result.size.toLocaleString()}</td>
-                <td>${result.strategy}</td>
-                <td>${result.strategy === 'Parallel' ? result.numThreads : '-'}</td>
-                <td>${result.order}</td>
-                <td>${result.sortingTime.toFixed(3)}</td>
-                <td>${result.packingTime.toFixed(3)}</td>
-                <td>${result.totalTime.toFixed(3)}</td>
-                <td>${result.itemsPerSecond.toLocaleString()}</td>
-                <td>${result.totalPacks.toLocaleString()}</td>
-                <td>${result.utilizationPercent.toFixed(1)}%</td>
-            `;
-
-            tbody.appendChild(row);
-        }
-
-        // Initialize when page loads
-        window.addEventListener('load', () => {
-            loadWasm();
-
-            // Set up event listeners after DOM is ready
-            document.getElementById('runButton').addEventListener('click', runPacking);
-            document.getElementById('generateButton').addEventListener('click', generateTestData);
-            document.getElementById('downloadInputButton').addEventListener('click', downloadInputData);
-
-            // Benchmark tab event listeners
-            document.getElementById('packingTab').addEventListener('click', () => switchTab('packing'));
-            document.getElementById('benchmarkTab').addEventListener('click', () => switchTab('benchmark'));
-            document.getElementById('runBenchmarkButton').addEventListener('click', runSingleBenchmark);
-            document.getElementById('runFullBenchmarkButton').addEventListener('click', runFullBenchmark);
-            document.getElementById('exportBenchmarkButton').addEventListener('click', exportBenchmarkResults);
-
-            // Initialize with packing tab active
-            switchTab('packing');
-        });
-    </script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
