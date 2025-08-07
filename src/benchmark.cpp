@@ -13,6 +13,10 @@ const std::vector<strategy_type> benchmark::PACKING_STRATEGIES = {  strategy_typ
                                                                     strategy_type::PARALLEL_FIRST_FIT,
                                                                     strategy_type::LOCKFREE_FIRST_FIT,
                                                                     strategy_type::BLOCKING_NEXT_FIT
+#ifdef HAS_OPENMP
+                                                                    ,strategy_type::OPENMP_NEXT_FIT
+                                                                    ,strategy_type::OPENMP_FIRST_FIT
+#endif
 };
 const std::vector<unsigned int> benchmark::THREAD_COUNTS = {0}; // 0 means use hardware concurrency
 

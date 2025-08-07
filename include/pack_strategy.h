@@ -9,7 +9,6 @@ enum class strategy_type {
     BLOCKING_FIRST_FIT,
     PARALLEL_FIRST_FIT,
     LOCKFREE_FIRST_FIT,
-    PARALLEL_BEST_FIT,
     BLOCKING_NEXT_FIT
 };
 
@@ -66,4 +65,30 @@ public:
      * @return std::string String representation
      */
     static std::string strategy_type_to_string(strategy_type type);
+
+    /**
+     * @brief Get all available strategies
+     * @return std::vector<strategy_type> List of all strategies
+     */
+    static std::vector<strategy_type> get_all_strategies();
+
+    /**
+     * @brief Get only fast strategies (excludes WORST_FIT, BEST_FIT)
+     * @return std::vector<strategy_type> List of fast strategies
+     */
+    static std::vector<strategy_type> get_fast_strategies();
+
+    /**
+     * @brief Check if a strategy is parallel
+     * @param type Strategy type
+     * @return bool True if parallel strategy
+     */
+    static bool is_parallel_strategy(strategy_type type);
+
+    /**
+     * @brief Get default thread count for a strategy
+     * @param type Strategy type
+     * @return int Default thread count (1 for sequential, hardware_concurrency for parallel)
+     */
+    static int get_default_thread_count(strategy_type type);
 };
