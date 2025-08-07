@@ -9,6 +9,7 @@
 #include "sort_order.h"
 #include "pack_strategy.h"
 #include "timer.h"
+#include "optimized_sort.h"
 
 /**
  * @brief Configuration for the pack planning process
@@ -158,16 +159,27 @@ private:
      */
     void sort_items(std::vector<item>& items, sort_order order) noexcept {
         switch (order) {
-            case sort_order::SHORT_TO_LONG:
-                std::sort(items.begin(), items.end());
-                break;
-            case sort_order::LONG_TO_SHORT:
-                std::sort(items.begin(), items.end(), std::greater<item>());
-                break;
-            case sort_order::NATURAL:
-            default:
-                // Keep original order
-                break;
+        case sort_order::SHORT_TO_LONG:
+#ifdef __AVX2__
+            // Use SIMD-optimized RadixSort for best performance
+            optimized_sort::SIMDRadixSortV2::sort_by_length(items, true);
+#else
+            // Fall back to regular RadixSort
+            optimized_sort::RadixSort::sort_by_length(items, true);
+#endif
+            break;
+        case sort_order::LONG_TO_SHORT:
+#ifdef __AVX2__
+            // Use SIMD-optimized RadixSort for best performance
+            optimized_sort::SIMDRadixSortV2::sort_by_length(items, false);
+#else
+            // Fall back to regular RadixSort
+            optimized_sort::RadixSort::sort_by_length(items, false);
+#endif
+        case sort_order::NATURAL:
+        default:
+            // Keep original order
+            break;
         }
     }
 

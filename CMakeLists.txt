@@ -5,6 +5,14 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+find_path(CONCURRENTQUEUE_INCLUDE_DIR
+    NAMES moodycamel/concurrentqueue.h
+    PATHS /usr/include/concurrentqueue
+          /usr/local/include/concurrentqueue
+          /usr/include
+          /usr/local/include
+)
+
 # Check if we're building with Emscripten
 if(EMSCRIPTEN)
     message(STATUS "Building with Emscripten for WebAssembly")
@@ -95,6 +103,10 @@ else()
                 set(MARCH_NATIVE "-march=alderlake")
             elseif(CPU_MODEL MATCHES "Ryzen AI 9 HX 370")
                 set(MARCH_NATIVE "-march=znver5")
+                # Zen 5 specific optimizations
+                set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mprefer-vector-width=512")
+                # Enable AVX-512 if supported
+                set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -mavx512f -mavx512vl")
             endif()
         endif()
     endif()
@@ -107,7 +119,7 @@ else()
 
     string(
         APPEND opts
-            "$<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:-Wall;-Wno-deprecated-declarations;-O3;${MARCH_NATIVE};-fPIC;-flto;-fomit-frame-pointer>"
+            "$<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:CXX>>:-Wall;-Wno-deprecated-declarations;-O3;${MARCH_NATIVE};-fPIC;-flto;-fomit-frame-pointer;-funroll-loops;-fprefetch-loop-arrays;-mprefer-vector-width=256;-falign-functions=32;-falign-loops=32>"
             "$<$<AND:$<CONFIG:DEBUG>,$<COMPILE_LANGUAGE:CXX>>:-Wall;-Wno-deprecated-declarations;-O0;-g3;-fPIC>"
             "$<$<AND:$<CONFIG:RELWITHDEBINFO>,$<COMPILE_LANGUAGE:CXX>>:-Wall;-Wno-deprecated-declarations;${MARCH_NATIVE};-O3;-g;-fPIC;-flto;-fomit-frame-pointer>"
             "$<$<AND:$<CONFIG:RELEASE>,$<COMPILE_LANGUAGE:C>>:-Wall;-Wno-deprecated-declarations;${MARCH_NATIVE};-O3;-fPIC;-flto;-fomit-frame-pointer>"
@@ -133,6 +145,9 @@ set(HEADERS
     include/pack_strategy.h
     include/blocking_pack_strategy.h
     include/parallel_pack_strategy.h
+    include/lockfree_pack_strategy.h
+    include/optimized_sort.h
+    include/blocking_next_fit_strategy.h
 )
 
 # WebAssembly specific files
@@ -153,7 +168,10 @@ add_library(${PROJECT_NAME}_LIB ${SOURCES} ${HEADERS})
 if(WASM_BUILD)
     # Create WebAssembly module
     add_executable(${PROJECT_NAME}_wasm src/wasm_bindings.cpp)
-    target_include_directories(${PROJECT_NAME}_wasm PRIVATE ${PROJECT_SOURCE_DIR}/include)
+    target_include_directories(${PROJECT_NAME}_wasm PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${CONCURRENTQUEUE_INCLUDE_DIR}
+    )
     target_link_libraries(${PROJECT_NAME}_wasm ${PROJECT_NAME}_LIB)
 
     set(FILES_TO_COPY server.py index.html dashboard.html wasm_profiler.html styles.css app.js)
@@ -185,8 +203,17 @@ else()
         INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE
     )
 
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(pack_planner PRIVATE -mavx2 -mfma)
+    elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        target_compile_options(pack_planner PRIVATE /arch:AVX2)
+    endif()
+
     # Include directories
-    target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/include)
+    target_include_directories(${PROJECT_NAME} PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${CONCURRENTQUEUE_INCLUDE_DIR}
+    )
 
     # Enable threading for benchmarks
     find_package(Threads REQUIRED)

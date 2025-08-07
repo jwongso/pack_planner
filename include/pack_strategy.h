@@ -8,8 +8,9 @@
 enum class strategy_type {
     BLOCKING_FIRST_FIT,
     PARALLEL_FIRST_FIT,
-    BLOCKING_BEST_FIT,
-    PARALLEL_BEST_FIT
+    LOCKFREE_FIRST_FIT,
+    PARALLEL_BEST_FIT,
+    BLOCKING_NEXT_FIT
 };
 
 /**

@@ -1,153 +1,117 @@
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include <string>
-#include "pack_planner.h"
-#include "benchmark.h"
+#include <sstream>
 #include <CLI/CLI.hpp>
 
-void printUsage(const std::string& programName) {
-    std::cout << "Usage:" << std::endl;
-    std::cout << "  " << programName << "                    - Read from standard input" << std::endl;
-    std::cout << "  " << programName << " <input_file>       - Read from input file" << std::endl;
-    std::cout << "  " << programName << " --benchmark        - Run performance benchmark" << std::endl;
+#include "item.h"
+#include "pack_planner.h"
+#include "benchmark.h"
+
+strategy_type parse_strategy_type(const std::string& str) {
+    if (str == "BLOCKING_FIRST_FIT") return strategy_type::BLOCKING_FIRST_FIT;
+    if (str == "PARALLEL_FIRST_FIT") return strategy_type::PARALLEL_FIRST_FIT;
+    if (str == "LOCKFREE_FIRST_FIT") return strategy_type::LOCKFREE_FIRST_FIT;
+    return strategy_type::BLOCKING_FIRST_FIT;
 }
 
-/**
- * @brief Parse input from stream into configuration and items
- * @param input Input stream to read from
- * @param config Configuration to populate
- * @param items Vector to populate with items
- * @return bool True if parsing was successful
- */
-[[nodiscard]] static bool parse_input(std::istream& input, pack_planner_config& config, std::vector<item>& items) {
+bool load_items_from_file(const std::string& filename, std::vector<item>& items) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    items.clear();
     std::string line;
 
-    // Parse first line: sort order, max items, max weight
-    if (!std::getline(input, line) || line.empty()) {
-        return false;
-    }
+    while (std::getline(file, line)) {
+        if (line.empty()) continue;
 
-    std::istringstream first_line(line);
-    std::string sort_order_str, max_items_str, max_weight_str;
+        std::istringstream iss(line);
+        int id, length, quantity;
+        double weight;
+        char comma;
 
-    if (!std::getline(first_line, sort_order_str, ',') ||
-        !std::getline(first_line, max_items_str, ',') ||
-        !std::getline(first_line, max_weight_str)) {
-        return false;
-    }
-
-    config.order = parse_sort_order(sort_order_str);
-    config.max_items_per_pack = std::stoi(max_items_str);
-    config.max_weight_per_pack = std::stod(max_weight_str);
-
-    // Parse items
-    while (std::getline(input, line) && !line.empty()) {
-        std::istringstream item_line(line);
-        std::string id_str, length_str, quantity_str, weight_str;
-
-        if (std::getline(item_line, id_str, ',') &&
-            std::getline(item_line, length_str, ',') &&
-            std::getline(item_line, quantity_str, ',') &&
-            std::getline(item_line, weight_str)) {
-
-            int id = std::stoi(id_str);
-            int length = std::stoi(length_str);
-            int quantity = std::stoi(quantity_str);
-            double weight = std::stod(weight_str);
-
+        if (iss >> id >> comma >> length >> comma >> quantity >> comma >> weight) {
             items.emplace_back(id, length, quantity, weight);
         }
     }
 
-    return true;
+    file.close();
+    return !items.empty();
 }
 
 int main(int argc, char* argv[]) {
-    CLI::App app{"Pack Planner - Efficiently pack items into containers"};
+    CLI::App app{"Pack Planner"};
 
-    // Input options
     std::string input_file;
-    bool use_stdin = false;
-
-    // Pack strategy options
-    std::string strategy_str = "bff"; // blocking first fit
+    std::string output_file = "output.txt";
+    std::string strategy_str = "BLOCKING_FIRST_FIT";
+    std::string sort_order_str = "NATURAL";
+    int max_items_per_pack = 100;
+    double max_weight_per_pack = 200.0;
     int thread_count = 4;
-
-    // Benchmark option
     bool run_benchmark = false;
+    bool run_sort_benchmark = false;
+    bool run_thread_benchmark = false;
+    std::vector<unsigned int> thread_counts = {1, 4, 8, 12, 16, 24};
 
-    // Add CLI options
-    app.add_flag("-i,--stdin", use_stdin, "Read input from standard input");
-    app.add_option("-f,--file", input_file, "Input file path");
-    app.add_option("-s,--strategy", strategy_str, "Packing strategy (blocking first fit or parallel first fit)")
-        ->check(CLI::IsMember({"bff", "pff"}));
-    app.add_option("-t,--threads", thread_count, "Number of threads for parallel strategy")
-        ->check(CLI::Range(1, 64));
-    app.add_flag("-b,--benchmark", run_benchmark, "Run performance benchmark");
+    app.add_option("-i,--input", input_file, "Input CSV file path");
+    app.add_option("-o,--output", output_file, "Output file path");
+    app.add_option("-s,--strategy", strategy_str, "Packing strategy");
+    app.add_option("--sort", sort_order_str, "Sort order");
+    app.add_option("-m,--max-items", max_items_per_pack, "Maximum items per pack");
+    app.add_option("-w,--max-weight", max_weight_per_pack, "Maximum weight per pack");
+    app.add_option("-t,--threads", thread_count, "Number of threads");
+    app.add_flag("-b,--benchmark", run_benchmark, "Run performance benchmarks");
+    app.add_flag("--benchmark-sort", run_sort_benchmark, "Run sorting algorithm benchmarks");
+    app.add_flag("--benchmark-threads", run_thread_benchmark, "Run thread scaling benchmarks");
+    app.add_option("--thread-counts", thread_counts, "Thread counts for benchmark");
 
-    // Parse command line
     CLI11_PARSE(app, argc, argv);
 
-    // Run benchmark if requested
-    if (run_benchmark) {
-        benchmark benchmark;
-        benchmark.run_benchmark();
+    if (run_sort_benchmark) {
+        benchmark::benchmark_sorts();
         return 0;
     }
 
-    // Set up planner and configuration
-    pack_planner planner;
-    pack_planner_config config;
+    if (run_thread_benchmark) {
+        benchmark bench;
+        bench.run_benchmark_with_threads(thread_counts);
+        return 0;
+    }
+
+    if (run_benchmark) {
+        benchmark bench;
+        bench.run_benchmarks();
+        return 0;
+    }
+
+    if (input_file.empty()) {
+        return 1;
+    }
+
     std::vector<item> items;
+    if (!load_items_from_file(input_file, items)) {
+        return 1;
+    }
 
-    // Set strategy type from command line
-    config.type = (strategy_str == "pff") ?
-                  strategy_type::PARALLEL_FIRST_FIT :
-                  strategy_type::BLOCKING_FIRST_FIT;
-
-    // Set thread count for parallel strategy
+    pack_planner_config config;
+    config.type = parse_strategy_type(strategy_str);
+    config.order = parse_sort_order(sort_order_str);
+    config.max_items_per_pack = max_items_per_pack;
+    config.max_weight_per_pack = max_weight_per_pack;
     config.thread_count = thread_count;
 
-    bool parse_success = false;
+    pack_planner planner;
+    auto result = planner.plan_packs(config, items);
 
-    // Handle input source
-    if (use_stdin || (input_file.empty() && !run_benchmark)) {
-        // Read from standard input
-        parse_success = parse_input(std::cin, config, items);
-    } else if (!input_file.empty()) {
-        // Read from file
-        std::ifstream inputFile(input_file);
-        if (!inputFile.is_open()) {
-            std::cerr << "Error: Could not open input file: " << input_file << std::endl;
-            return 1;
-        }
-        parse_success = parse_input(inputFile, config, items);
-        inputFile.close();
+    std::ofstream file(output_file);
+    if (file.is_open()) {
+        planner.output_results(result.packs, file);
+        file.close();
     }
-
-    if (!parse_success) {
-        std::cerr << "Error: Failed to parse input." << std::endl;
-        return 1;
-    }
-
-    if (items.empty()) {
-        std::cerr << "Error: No items to pack." << std::endl;
-        return 1;
-    }
-
-    // Plan packs
-    pack_planner_result result = planner.plan_packs(config, items);
-
-    // Output results
-    planner.output_results(result.packs);
-
-    // Output strategy and timing information
-    std::cout << "\nPacking Summary:" << std::endl;
-    std::cout << "Strategy: " << result.strategy_name << std::endl;
-    std::cout << "Sorting time: " << result.sorting_time << " ms" << std::endl;
-    std::cout << "Packing time: " << result.packing_time << " ms" << std::endl;
-    std::cout << "Total time: " << result.total_time << " ms" << std::endl;
-    std::cout << "Utilization: " << result.utilization_percent << "%" << std::endl;
 
     return 0;
 }
